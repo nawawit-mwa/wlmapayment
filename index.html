@@ -52,6 +52,11 @@
   th,td{border:1px solid var(--grid);padding:6px 8px;text-align:center;white-space:nowrap}
   thead th{background:var(--hdr);color:var(--hdrink);font-weight:600;position:sticky;top:0;z-index:3}
   thead tr:nth-child(2) th{top:35px}
+  thead th[data-sort]{cursor:pointer;user-select:none;position:sticky}
+  thead th[data-sort]:hover{filter:brightness(1.12)}
+  thead th .arw{font-size:11px;opacity:.55;margin-left:3px}
+  thead th.sorted .arw{opacity:1}
+  thead th.sorted{box-shadow:inset 0 -3px 0 rgba(255,255,255,.85)}
   th.g-qty{background:var(--hd-qty)}th.g-price{background:var(--hd-price)}th.g-money{background:var(--hd-money)}
   tbody tr{cursor:pointer}
   tbody tr:hover td{filter:brightness(.975)}
@@ -190,22 +195,24 @@
       <table id="tbl">
         <thead>
           <tr>
-            <th rowspan="2">ลำดับ</th>
-            <th rowspan="2">รายการ (หมวดหมู่งาน)</th>
-            <th rowspan="2">หน่วย</th>
+            <th rowspan="2" data-sort="seq" title="เรียงตามลำดับความสำคัญ (รายการที่มีปัญหาขึ้นก่อน)">ลำดับ</th>
+            <th rowspan="2" data-sort="item">รายการ (หมวดหมู่งาน)</th>
+            <th rowspan="2" data-sort="unit">หน่วย</th>
             <th class="g-qty" colspan="4">ปริมาณ</th>
             <th class="g-price" colspan="4">ราคา/หน่วย</th>
             <th class="g-money" colspan="3">ยอดเงิน</th>
             <th rowspan="2" class="spacer"></th>
-            <th class="g-money" rowspan="2">หมายเหตุ ยอดเงิน</th>
+            <th class="g-money" rowspan="2" data-sort="mnote">หมายเหตุ ยอดเงิน</th>
           </tr>
           <tr>
-            <th class="g-qty">P-1</th><th class="g-qty">WLMA</th>
-            <th class="d d-qty">ผลต่าง<br>ปริมาณ</th><th class="g-qty">หมายเหตุ<br>ปริมาณ</th>
-            <th class="g-price">P-1</th><th class="g-price">WLMA</th>
-            <th class="d d-price">ผลต่าง<br>ราคา/หน่วย</th><th class="g-price">หมายเหตุ<br>ราคา/หน่วย</th>
-            <th class="g-money">P-1</th><th class="g-money">WLMA</th>
-            <th class="d d-money">ผลต่าง<br>ยอดเงิน</th>
+            <th class="g-qty" data-sort="p1qty">P-1</th><th class="g-qty" data-sort="wqty">WLMA</th>
+            <th class="d d-qty" data-sort="dqty">ผลต่าง<br>ปริมาณ</th>
+            <th class="g-qty" data-sort="qnote">หมายเหตุ<br>ปริมาณ</th>
+            <th class="g-price" data-sort="p1price">P-1</th><th class="g-price" data-sort="wprice">WLMA</th>
+            <th class="d d-price" data-sort="dprice">ผลต่าง<br>ราคา/หน่วย</th>
+            <th class="g-price" data-sort="pnote">หมายเหตุ<br>ราคา/หน่วย</th>
+            <th class="g-money" data-sort="p1amt">P-1</th><th class="g-money" data-sort="wamt">WLMA</th>
+            <th class="d d-money" data-sort="damt">ผลต่าง<br>ยอดเงิน</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -783,7 +790,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var state = {
     wlmaRows: null, wlmaName: '',
     p1Book: null, p1Sheet: null, p1Items: null, p1Name: '',
-    contracts: [], rows: [], zone: 'C', edits: {}, ctx: {}
+    contracts: [], rows: [], zone: 'C', edits: {}, ctx: {},
+    // ค่าเริ่มต้น: เรียงตามชื่อรายการ (หมวดหมู่งาน) จากน้อยไปมาก
+    sort: { key: 'item', dir: 1 }
   };
 
   function say(kind, html) { var m = $('msg'); m.className = 'msg show ' + kind; m.innerHTML = html; }
@@ -893,15 +902,108 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return v;
   }
 
+  /* ---------- การเรียงลำดับ (กดที่หัวตาราง) ---------- */
+  var QRANK = { 'ตรงกัน': 0, 'ไม่ตรงกัน': 1, 'ไม่ได้เบิกใน P-1': 2, 'ไม่พบใน WLMA': 3 };
+
+  /* เรียง "รายการ" ตามลำดับหัวข้อจริงในเอกสาร (3 → 3.1 → 3.2.1 → (1),(2)…)
+     ไม่ใช่ตามตัวอักษร มิฉะนั้น "10" จะมาก่อน "2" — ทำโดยเติมศูนย์หน้าเลขทุกระดับ */
+  function pad4(x) {
+    var n = parseInt(x, 10);
+    if (isNaN(n)) return '0000';
+    var s = String(n);
+    while (s.length < 4) s = '0' + s;
+    return s;
+  }
+  function natItemKey(r) {
+    var k = r.key || [null, null, null];
+    var out = [pad4(k[0])];
+    var subs = String(k[1] || '').split('.');
+    for (var i = 0; i < 6; i++) out.push(pad4(subs[i]));
+    out.push(pad4(k[2]));
+    return out.join('.');
+  }
+
+  function sortValue(key, r, v, idx) {
+    switch (key) {
+      case 'seq':     return idx;                       // ลำดับเดิม = เรียงตามความสำคัญ
+      case 'item':    return natItemKey(r);
+      case 'unit':    return r.unit || '';
+      case 'p1qty':   return v.p1Qty;
+      case 'wqty':    return r.wQty;
+      case 'dqty':    return (v.p1Qty !== null && r.wQty !== null) ? (v.p1Qty - r.wQty) : null;
+      case 'qnote':   return QRANK[WP.qtyNote(v).text] !== undefined ? QRANK[WP.qtyNote(v).text] : 9;
+      case 'p1price': return r.p1Price;
+      case 'wprice':  return r.wPrice;
+      case 'dprice':  return (r.p1Price !== null && r.wPrice !== null) ? (r.p1Price - r.wPrice) : null;
+      case 'pnote':   return WP.priceNote(v).text;
+      case 'p1amt':   return v.p1Amount;
+      case 'wamt':    return r.wTotal;
+      case 'damt':    return (v.p1Amount !== null && r.wTotal !== null) ? (v.p1Amount - r.wTotal) : null;
+      case 'mnote':   return v.moneyOk ? 0 : 1;
+      default:        return idx;
+    }
+  }
+
+  function isBlank(x) {
+    return x === null || x === undefined || (typeof x === 'number' && !isFinite(x)) || x === '';
+  }
+
+  function cmpVal(a, b, dir) {
+    var ab = isBlank(a), bb = isBlank(b);
+    if (ab && bb) return 0;
+    if (ab) return 1;      // ค่าว่างไปท้ายสุดเสมอ ไม่ว่าจะเรียงทางไหน
+    if (bb) return -1;
+    if (typeof a === 'string' || typeof b === 'string') {
+      return String(a).localeCompare(String(b), 'th') * dir;
+    }
+    return (a - b) * dir;
+  }
+
+  function markHeaders() {
+    var ths = document.querySelectorAll('thead th[data-sort]');
+    for (var i = 0; i < ths.length; i++) {
+      var th = ths[i];
+      var old = th.querySelector('.arw');
+      if (old) old.remove();
+      var active = th.getAttribute('data-sort') === state.sort.key;
+      th.classList.toggle('sorted', active);
+      var sp = document.createElement('span');
+      sp.className = 'arw';
+      sp.textContent = active ? (state.sort.dir === 1 ? '▲' : '▼') : '⇅';
+      th.appendChild(sp);
+    }
+  }
+
+  document.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var k = th.getAttribute('data-sort');
+      if (state.sort.key === k) state.sort.dir = -state.sort.dir;
+      else state.sort = { key: k, dir: 1 };
+      render();
+    });
+  });
+
   /* ---------- render ---------- */
   function render() {
     var tb = $('tbody'); tb.innerHTML = '';
     var onlyDiff = $('onlyDiff').checked;
     var n = 0, blockers = 0;
 
-    state.rows.forEach(function (r, idx) {
+    // เตรียมรายการพร้อมค่าที่ใช้เรียง (เก็บ index เดิมไว้ให้ popup อ้างอิงถูกแถว)
+    var list = state.rows.map(function (r, idx) {
       var v = viewOf(r);
       if (!v.moneyOk) blockers++;
+      return { r: r, v: v, idx: idx, sv: sortValue(state.sort.key, r, v, idx) };
+    });
+    var dir = state.sort.dir;
+    list.sort(function (x, y) {
+      var c = cmpVal(x.sv, y.sv, dir);
+      if (c !== 0) return c;
+      return natItemKey(x.r).localeCompare(natItemKey(y.r));   // tie-break คงที่ ตามลำดับหัวข้อ
+    });
+
+    list.forEach(function (item) {
+      var r = item.r, v = item.v, idx = item.idx;
       var allOk = (r.kind === 'both' && v.qtyMatch && r.priceMatch);
       if (onlyDiff && allOk) return;
       n++;
@@ -964,6 +1066,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       tr.addEventListener('click', function () { openDetail(idx); });
     });
 
+    markHeaders();
     renderSummary();
     var ec = Object.keys(state.edits).length;
     $('editCount').textContent = ec ? ('แก้ไขแล้ว ' + ec + ' รายการ') : '';
