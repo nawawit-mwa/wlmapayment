@@ -84,6 +84,8 @@
     color:var(--ink);text-align:center;font-family:inherit;font-size:14.5px;font-variant-numeric:tabular-nums}
   .useBtn{padding:2px 8px;font-size:12.5px;font-weight:500;background:transparent;color:var(--accent);
     border:1px solid var(--d-qty-line);border-radius:5px;margin-top:4px}
+  .useBtn.undo{color:var(--muted);border-color:var(--grid)}
+  .useBtn.undo:hover{color:var(--bad-ink);border-color:var(--bad-ink)}
   .edited{outline:2px solid var(--edit-line);outline-offset:-2px}
   .legend{display:flex;gap:17px;flex-wrap:wrap;font-size:14.5px;margin-top:13px}
   .legend div{display:flex;align-items:center;gap:7px}
@@ -123,6 +125,12 @@
   table.det tbody tr{cursor:default}
   .detwrap{max-height:46vh;overflow:auto;border:1px solid var(--grid);border-radius:8px}
   .mnote{font-size:13.5px;color:var(--muted);margin-bottom:10px}
+  .modal .mf{display:flex;gap:10px;justify-content:flex-end}
+  h4.sh{font-size:15px;margin:18px 0 8px;color:var(--accent)}
+  h4.sh:first-of-type{margin-top:4px}
+  .empty{padding:16px;color:var(--muted);font-size:14px;text-align:center}
+  td.dn{color:var(--bad-ink);font-weight:600}
+  td.up{color:var(--warn-ink);font-weight:600}
 </style>
 </head>
 <body>
@@ -189,13 +197,14 @@
       <span class="tag" id="editCount"></span>
       <span class="hint" id="exportHint"></span>
       <button class="ghost" id="btnReset">ล้างการแก้ไขทั้งหมด</button>
+      <button class="ghost" id="btnSummary" disabled>สรุปแก้ไข</button>
       <button id="btnExport" disabled>บันทึกเป็นไฟล์ P-1</button>
     </div>
     <div class="tablescroll">
       <table id="tbl">
         <thead>
           <tr>
-            <th rowspan="2" data-sort="seq" title="เรียงตามลำดับความสำคัญ (รายการที่มีปัญหาขึ้นก่อน)">ลำดับ</th>
+            <th rowspan="2" data-sort="seq" title="รายการที่ไม่ตรงกันขึ้นก่อน แล้วเรียงตามลำดับหัวข้อ">ลำดับ</th>
             <th rowspan="2" data-sort="item">รายการ (หมวดหมู่งาน)</th>
             <th rowspan="2" data-sort="unit">หน่วย</th>
             <th class="g-qty" colspan="4">ปริมาณ</th>
@@ -251,6 +260,30 @@
       <div class="detwrap"><table class="det"><thead id="mDetHead"></thead><tbody id="mDetBody"></tbody></table></div>
     </div>
     <div class="mf"><button class="ghost" id="mClose2">ปิด</button></div>
+  </div>
+</div>
+
+<!-- popup สรุปการแก้ไข -->
+<div class="ovl" id="ovl2">
+  <div class="modal">
+    <div class="mh">
+      <div>
+        <h3>สรุปการปรับแก้</h3>
+        <div class="p" id="sCtx"></div>
+      </div>
+      <button class="xbtn" id="sClose">ปิด</button>
+    </div>
+    <div class="mb">
+      <div class="kv" id="sKv"></div>
+      <h4 class="sh">การปรับแก้ฝั่ง P-1 (เอกสารเบิกจ่ายเงิน)</h4>
+      <div class="detwrap"><table class="det"><thead id="sP1Head"></thead><tbody id="sP1Body"></tbody></table></div>
+      <h4 class="sh">การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA)</h4>
+      <div class="detwrap"><table class="det"><thead id="sWHead"></thead><tbody id="sWBody"></tbody></table></div>
+    </div>
+    <div class="mf">
+      <button class="ghost" id="sClose2">ปิด</button>
+      <button id="sSave">บันทึกสรุปเป็นไฟล์ Excel</button>
+    </div>
   </div>
 </div>
 
@@ -703,9 +736,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- คำอธิบายสถานะ ---------- */
 
   function qtyNote(r) {
+    // เช็คว่าปริมาณตรงกันก่อนเสมอ — เพราะหลังผู้ใช้แก้ไข ค่าอาจตรงกันแล้ว
+    // แม้เดิมจะเป็นรายการที่ไม่มีคู่เทียบ
+    if (r.qtyMatch) return { text: 'ตรงกัน', cls: 'n-ok' };
     if (r.kind === 'missing_in_p1') return { text: 'ไม่ได้เบิกใน P-1', cls: 'n-bad' };
     if (r.kind === 'missing_in_wlma') return { text: 'ไม่พบใน WLMA', cls: 'n-info' };
-    return r.qtyMatch ? { text: 'ตรงกัน', cls: 'n-ok' } : { text: 'ไม่ตรงกัน', cls: 'n-bad' };
+    return { text: 'ไม่ตรงกัน', cls: 'n-bad' };
   }
 
   function priceNote(r) {
@@ -790,9 +826,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var state = {
     wlmaRows: null, wlmaName: '',
     p1Book: null, p1Sheet: null, p1Items: null, p1Name: '',
-    contracts: [], rows: [], zone: 'C', edits: {}, ctx: {},
-    // ค่าเริ่มต้น: เรียงตามชื่อรายการ (หมวดหมู่งาน) จากน้อยไปมาก
-    sort: { key: 'item', dir: 1 }
+    contracts: [], rows: [], zone: 'C',
+    edits: {},      // การแก้ไขฝั่ง P-1  (keyStr -> ปริมาณใหม่)
+    editsW: {},     // การแก้ไขฝั่ง WLMA (keyStr -> ปริมาณใหม่)
+    ctx: {},
+    // ค่าเริ่มต้น: รายการที่ไม่ตรงกันขึ้นก่อน แล้วเรียงตามลำดับหัวข้อในเอกสาร
+    sort: { key: 'seq', dir: 1 }
   };
 
   function say(kind, html) { var m = $('msg'); m.className = 'msg show ' + kind; m.innerHTML = html; }
@@ -872,10 +911,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('btnRun').addEventListener('click', function () {
     var contract = $('selContract').value || null;
     state.zone = $('selZone').value;
-    state.edits = {};
+    state.edits = {}; state.editsW = {};
     var agg = WP.aggregateWLMA(state.wlmaRows, contract);
     state.rows = WP.compare(state.p1Items, agg, state.zone);
     state.ctx = { contract: contract, zone: state.zone };
+    // บันทึกว่าตอนเริ่มต้นรายการไหน "ไม่ตรงกัน" ไว้ใช้เรียงลำดับแบบคงที่
+    // (ถ้าคำนวณสดขณะแก้ไข แถวจะกระโดดหนีทุกครั้งที่แก้เสร็จ ใช้งานยาก)
+    state.rows.forEach(function (r) {
+      r.initialMismatch = !(r.kind === 'both' && r.qtyMatch && r.priceMatch && WP.moneyMatched(r));
+    });
     if (!state.rows.length) {
       say('err', 'ไม่พบรายการที่เทียบได้เลย — ตรวจสอบว่าเลือกสัญญาและโซนถูกต้องหรือไม่');
       return;
@@ -886,21 +930,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  /* ---------- ค่าปัจจุบันหลังแก้ไข ---------- */
+  /* ---------- ค่าปัจจุบันหลังแก้ไข (แก้ได้ทั้งฝั่ง P-1 และ WLMA) ---------- */
+  function n0(x) { return (x === null || x === undefined || !isFinite(x)) ? 0 : x; }
   function curQty(r) { return (state.edits[r.keyStr] !== undefined) ? state.edits[r.keyStr] : r.p1Qty; }
-  function curAmount(r) {
-    if (state.edits[r.keyStr] === undefined) return r.p1Amount;
-    var q = curQty(r);
-    if (q === null || r.p1Price === null) return r.p1Amount;
-    return q * r.p1Price;
-  }
+  function curWQty(r) { return (state.editsW[r.keyStr] !== undefined) ? state.editsW[r.keyStr] : r.wQty; }
+
   function viewOf(r) {
-    var q = curQty(r), amt = curAmount(r);
-    var qtyMatch = (q !== null && r.wQty !== null) ? Math.abs(q - r.wQty) < WP.EPS : false;
-    var v = Object.assign({}, r, { p1Qty: q, p1Amount: amt, qtyMatch: qtyMatch });
+    var q = curQty(r), wq = curWQty(r);
+
+    var amt = r.p1Amount;
+    if (state.edits[r.keyStr] !== undefined && q !== null && r.p1Price !== null) amt = q * r.p1Price;
+
+    var wtot = r.wTotal;
+    if (state.editsW[r.keyStr] !== undefined && wq !== null) {
+      var wp = effWPrice(r);
+      if (wp !== null) wtot = wq * wp;
+    }
+
+    // ฝั่งที่ไม่มีข้อมูลถือเป็น 0 (แสดงในช่องกรอกเป็น 0 อยู่แล้ว) เพื่อให้เทียบกันได้
+    // หลังผู้ใช้แก้ไข เช่น กรอก WLMA = 1 ให้เท่ากับ P-1 ต้องขึ้นว่า "ตรงกัน"
+    var qc = (q === null || q === undefined) ? 0 : q;
+    var wc = (wq === null || wq === undefined) ? 0 : wq;
+    var qtyMatch = Math.abs(qc - wc) < WP.EPS;
+    var v = Object.assign({}, r, { p1Qty: q, p1Amount: amt, wQty: wq, wTotal: wtot, qtyMatch: qtyMatch });
     v.moneyOk = WP.moneyMatched(v);
     return v;
   }
+
+  /* ราคา/หน่วยที่ใช้คำนวณยอดฝั่ง WLMA
+     ถ้า WLMA ไม่มีรายการนี้เลย (จึงไม่มีราคา) ให้ยืมราคา/หน่วยจากฝั่ง P-1 มาใช้
+     เพื่อให้ผู้ใช้กรอกปริมาณฝั่ง WLMA ได้ */
+  function effWPrice(r) {
+    if (r.wPrice !== null && r.wPrice !== undefined) return r.wPrice;
+    if (r.p1Price !== null && r.p1Price !== undefined) return r.p1Price;
+    return null;
+  }
+
+  /* แก้ไขฝั่ง WLMA ได้เมื่อมีราคา/หน่วยที่ใช้คำนวณยอดใหม่ได้ (รวมกรณีปริมาณเป็น 0 / ไม่มีข้อมูล) */
+  function wEditable(r) { return !r.priceAmbiguous && effWPrice(r) !== null; }
 
   /* ---------- การเรียงลำดับ (กดที่หัวตาราง) ---------- */
   var QRANK = { 'ตรงกัน': 0, 'ไม่ตรงกัน': 1, 'ไม่ได้เบิกใน P-1': 2, 'ไม่พบใน WLMA': 3 };
@@ -914,18 +981,65 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     while (s.length < 4) s = '0' + s;
     return s;
   }
+  /* ดึง "ขนาด ศก." ออกจากชื่อรายการ เพื่อเรียงตามขนาดท่อ (20 มาก่อน 100)
+     รองรับ: "ศก. 20-25 มม." → 20 · "ศก.110 มม." → 110 ·
+             "ศก. 3 นิ้ว" → 76.2 · "ศก. 1 1/2 นิ้ว" → 38.1  (แปลงนิ้วเป็นมิลลิเมตร) */
+  function sizeOf(text) {
+    var t = String(text || '');
+    var m = /ศก\.?\s*([0-9]+(?:\.[0-9]+)?)(\s+[0-9]+\/[0-9]+)?/.exec(t);
+    if (!m) return null;
+    var n = parseFloat(m[1]);
+    if (!isFinite(n)) return null;
+    if (m[2]) {                                  // เศษส่วน เช่น "1 1/2"
+      var fr = m[2].trim().split('/');
+      var a = parseFloat(fr[0]), b = parseFloat(fr[1]);
+      if (isFinite(a) && isFinite(b) && b !== 0) n += a / b;
+    }
+    var after = t.slice(m.index + m[0].length, m.index + m[0].length + 25);
+    if (/^\s*(?:-\s*[0-9.\/ ]+)?นิ้ว/.test(after)) n *= 25.4;
+    return n;
+  }
+
+  function padN(x, w) {
+    var n = Math.round(Number(x));
+    if (!isFinite(n)) n = 0;
+    var s = String(n);
+    while (s.length < w) s = '0' + s;
+    return s;
+  }
+
+  /* หมวดที่เป็น "งานซ่อมท่อ" หรือ "งานขุดซ่อมท่อ" — ให้ขึ้นก่อนงานชนิดอื่น
+     ตรวจจากชื่อหมวดระดับบนสุด (ต้องมีคำว่า "งาน" นำหน้าติดกัน จึงไม่นับคำอย่าง
+     "งานวางส่วนที่เกินจากการซ่อมท่อ") */
+  function isPipeWork(r) {
+    var top = String(r.fullPath || '').split(' / ')[0];
+    return /งาน(ขุด)?ซ่อมท่อ/.test(top);
+  }
+
+  /* ลำดับที่ใช้เรียง
+       1) กลุ่มงานซ่อมท่อ / งานขุดซ่อมท่อ ขึ้นก่อน แล้วจึงเป็นงานชนิดอื่น
+       2) ในกลุ่มงานท่อ — เรียงตามขนาด ศก. ก่อน (งานขนาดเดียวกันอยู่ติดกันแม้คนละหมวด)
+          แล้วจึงตามหมายเลขหมวด และตัวเลขในวงเล็บ
+       3) ในกลุ่มงานอื่น — เรียงตามหมายเลขหมวดนำหน้า แล้วตัวเลขในวงเล็บ
+     ปิดท้ายด้วยเลขหัวข้อย่อย (เช่น 4.1, 4.2) เป็นตัวตัดสินให้ลำดับคงที่ */
   function natItemKey(r) {
     var k = r.key || [null, null, null];
-    var out = [pad4(k[0])];
     var subs = String(k[1] || '').split('.');
-    for (var i = 0; i < 6; i++) out.push(pad4(subs[i]));
-    out.push(pad4(k[2]));
-    return out.join('.');
+    var tail = [];
+    for (var i = 0; i < 6; i++) tail.push(pad4(subs[i]));
+    var rest = pad4(k[0]) + '.' + pad4(k[2]) + '.' + tail.join('.');
+
+    if (!isPipeWork(r)) return '1.' + rest;
+
+    var sz = sizeOf(r.leafText);
+    var szKey = (sz === null) ? '9999999' : padN(sz * 10, 7);
+    return '0.' + szKey + '.' + rest;
   }
 
   function sortValue(key, r, v, idx) {
     switch (key) {
-      case 'seq':     return idx;                       // ลำดับเดิม = เรียงตามความสำคัญ
+      // ลำดับ = กลุ่มที่ต้องแก้ไขขึ้นก่อน → หมายเลขหมวด → ตัวเลขในวงเล็บ
+      case 'seq':     return (r.initialMismatch ? '0' : '1') + '|' + natItemKey(r);
       case 'item':    return natItemKey(r);
       case 'unit':    return r.unit || '';
       case 'p1qty':   return v.p1Qty;
@@ -1009,10 +1123,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       n++;
 
       var qn = WP.qtyNote(v), pn = WP.priceNote(v), mn = WP.moneyNote(v);
-      var dQty = (v.p1Qty !== null && r.wQty !== null) ? (v.p1Qty - r.wQty) : null;
+      // ฝั่งที่ไม่มีข้อมูลถือเป็น 0 (ช่องกรอกก็แสดง 0 อยู่แล้ว) ผลต่างจึงคำนวณได้เสมอ
+      // ยกเว้น "ราคา/หน่วย" ที่ถ้าไม่มีจริง ๆ ต้องคง "—" ไว้ ไม่งั้นจะดูเหมือนราคาตรงกัน
+      var qP1 = n0(v.p1Qty), qW = n0(v.wQty);
+      var mP1 = n0(v.p1Amount), mW = n0(v.wTotal);
+      var dQty = qP1 - qW;
       var dPrice = (r.p1Price !== null && r.wPrice !== null) ? (r.p1Price - r.wPrice) : null;
-      var dMoney = (v.p1Amount !== null && r.wTotal !== null) ? (v.p1Amount - r.wTotal) : null;
+      var dMoney = mP1 - mW;
       var edited = state.edits[r.keyStr] !== undefined;
+      var editedW = state.editsW[r.keyStr] !== undefined;
 
       var tr = document.createElement('tr');
       tr.setAttribute('data-i', idx);
@@ -1022,15 +1141,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           '<span class="leaf">' + esc(r.leafText) + '</span></td>' +
         '<td class="num">' + esc(r.unit || '—') + '</td>' +
         '<td class="num c-qty' + (edited ? ' edited' : '') + '">' + qtyCell(r, v) + '</td>' +
-        '<td class="num c-qty">' + WP.fmt(r.wQty) + '</td>' +
+        '<td class="num c-qty' + (editedW ? ' edited' : '') + '">' + wQtyCell(r, v) + '</td>' +
         '<td class="num d d-qty">' + sign(dQty) + '</td>' +
         '<td class="c-qty"><span class="note ' + qn.cls + '">' + qn.text + '</span></td>' +
         '<td class="num c-price">' + WP.fmt(r.p1Price) + '</td>' +
         '<td class="num c-price">' + (r.priceAmbiguous ? r.wPriceList.map(function (p) { return WP.fmt(p); }).join(' / ') : WP.fmt(r.wPrice)) + '</td>' +
         '<td class="num d d-price">' + sign(dPrice) + '</td>' +
         '<td class="c-price"><span class="note ' + pn.cls + '">' + pn.text + '</span></td>' +
-        '<td class="num c-money">' + WP.fmt(v.p1Amount) + '</td>' +
-        '<td class="num c-money">' + WP.fmt(r.wTotal) + '</td>' +
+        '<td class="num c-money">' + WP.fmt(mP1) + '</td>' +
+        '<td class="num c-money">' + WP.fmt(mW) + '</td>' +
         '<td class="num d d-money">' + sign(dMoney) + '</td>' +
         '<td class="spacer"></td>' +
         '<td class="c-money"><span class="note ' + mn.cls + '">' + mn.text + '</span>' +
@@ -1038,42 +1157,64 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             (mn.causeSub ? '<br>' + esc(mn.causeSub) : '') + '</span>' : '') + '</td>';
       tb.appendChild(tr);
 
-      var inp = tr.querySelector('input.qty');
-      if (inp) {
-        inp.addEventListener('click', function (ev) { ev.stopPropagation(); });
-        inp.addEventListener('change', function () {
-          var s = inp.value.trim();
-          if (s === '') { delete state.edits[r.keyStr]; }
-          else {
-            var num = parseFloat(s.replace(/,/g, ''));
-            if (!isFinite(num) || num < 0) { inp.value = WP.fmt(curQty(r)); return; }
-            if (Math.abs(num - r.p1Qty) < 1e-9) delete state.edits[r.keyStr];
-            else state.edits[r.keyStr] = num;
-          }
-          render();
-        });
-      }
-      var ub = tr.querySelector('button.useBtn');
-      if (ub) {
-        ub.addEventListener('click', function (ev) {
-          ev.stopPropagation();
-          var target = (r.kind === 'missing_in_wlma') ? 0 : r.wQty;
-          if (Math.abs(target - r.p1Qty) < 1e-9) delete state.edits[r.keyStr];
-          else state.edits[r.keyStr] = target;
-          render();
-        });
-      }
+      // ผูก input / ปุ่ม ของทั้งสองฝั่ง (P-1 = ช่อง side="p", WLMA = side="w")
+      [['p', state.edits, 'p1Qty'], ['w', state.editsW, 'wQty']].forEach(function (cfg) {
+        var side = cfg[0], store = cfg[1], baseField = cfg[2];
+        // ค่าตั้งต้นของช่อง — ถ้าฝั่งนั้นไม่มีข้อมูลเลย ให้ถือเป็น 0
+        var base = r[baseField];
+        if (base === null || base === undefined) base = 0;
+        var inp = tr.querySelector('input.qty[data-side="' + side + '"]');
+        if (inp) {
+          inp.addEventListener('click', function (ev) { ev.stopPropagation(); });
+          inp.addEventListener('change', function () {
+            var s = inp.value.trim();
+            if (s === '') { delete store[r.keyStr]; }
+            else {
+              var num = parseFloat(s.replace(/,/g, ''));
+              if (!isFinite(num) || num < 0) {
+                var back = (side === 'p') ? curQty(r) : curWQty(r);
+                inp.value = WP.fmt(back === null ? 0 : back);
+                return;
+              }
+              if (Math.abs(num - base) < 1e-9) delete store[r.keyStr];
+              else store[r.keyStr] = num;
+            }
+            render();
+          });
+        }
+        var ub = tr.querySelector('button.useBtn[data-side="' + side + '"]');
+        if (ub) {
+          ub.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            if (ub.getAttribute('data-act') === 'undo') {   // กดซ้ำ = คืนค่าเดิม เลือกใหม่ได้
+              delete store[r.keyStr];
+              render();
+              return;
+            }
+            // ฝั่ง P-1 ดึงค่าจาก WLMA ปัจจุบัน / ฝั่ง WLMA ดึงค่าจาก P-1 ปัจจุบัน
+            var target = (side === 'p') ? curWQty(r) : curQty(r);
+            if (target === null || target === undefined) target = 0;
+            if (Math.abs(target - base) < 1e-9) delete store[r.keyStr];
+            else store[r.keyStr] = target;
+            render();
+          });
+        }
+      });
       tr.addEventListener('click', function () { openDetail(idx); });
     });
 
     markHeaders();
     renderSummary();
-    var ec = Object.keys(state.edits).length;
-    $('editCount').textContent = ec ? ('แก้ไขแล้ว ' + ec + ' รายการ') : '';
+    var ec = Object.keys(state.edits).length, ew = Object.keys(state.editsW).length;
+    var parts = [];
+    if (ec) parts.push('P-1 ' + ec + ' รายการ');
+    if (ew) parts.push('WLMA ' + ew + ' รายการ');
+    $('editCount').textContent = parts.length ? ('แก้ไขแล้ว: ' + parts.join(' · ')) : '';
 
-    // ปุ่มบันทึกเปิดใช้ได้เมื่อยอดเงินตรงกันครบทุกรายการ
+    // ปุ่มบันทึก / สรุปแก้ไข เปิดใช้ได้เมื่อยอดเงินตรงกันครบทุกรายการ
     var hint = $('exportHint');
     $('btnExport').disabled = blockers > 0;
+    $('btnSummary').disabled = blockers > 0;
     if (blockers > 0) {
       hint.className = 'hint';
       hint.textContent = 'ยังมี ' + blockers + ' รายการที่ยอดเงินไม่ตรง — แก้ให้ตรงก่อนจึงจะบันทึกไฟล์ได้';
@@ -1090,10 +1231,39 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!r.editable) {
       return '<span title="ราคา/หน่วยไม่ตรงกัน จึงแก้ไขไม่ได้">' + WP.fmt(v.p1Qty) + ' 🔒</span>';
     }
-    var target = (r.kind === 'missing_in_wlma') ? 0 : r.wQty;
-    var diff = (v.p1Qty !== null && Math.abs(v.p1Qty - target) >= WP.EPS);
-    return '<input class="qty" type="text" value="' + WP.fmt(v.p1Qty) + '">' +
-      (diff ? '<br><button class="useBtn">' + (r.kind === 'missing_in_wlma' ? 'ปรับเป็น 0' : 'ใช้ค่าจาก WLMA') + '</button>' : '');
+    var target = (v.wQty === null || v.wQty === undefined) ? 0 : v.wQty;
+    var shown = (v.p1Qty === null || v.p1Qty === undefined) ? 0 : v.p1Qty;
+    var diff = Math.abs(shown - target) >= WP.EPS;
+    var base = (r.p1Qty === null || r.p1Qty === undefined) ? 0 : r.p1Qty;
+    return '<input class="qty" data-side="p" type="text" value="' + WP.fmt(shown) + '">' +
+      sideBtn('p', state.edits[r.keyStr] !== undefined, diff, base,
+              target === 0 ? 'ปรับเป็น 0' : 'ใช้ค่าจาก WLMA');
+  }
+
+  /* ปุ่มใต้ช่องแก้ไข — ถ้าแก้ไปแล้วจะกลายเป็นปุ่ม "คืนค่าเดิม" เพื่อกดกลับได้ */
+  function sideBtn(side, isEdited, hasDiff, baseVal, useLabel) {
+    if (isEdited) {
+      return '<br><button class="useBtn undo" data-side="' + side + '" data-act="undo">' +
+             'คืนค่าเดิม (' + WP.fmt(baseVal) + ')</button>';
+    }
+    if (hasDiff) {
+      return '<br><button class="useBtn" data-side="' + side + '" data-act="use">' + useLabel + '</button>';
+    }
+    return '';
+  }
+
+  function wQtyCell(r, v) {
+    if (!wEditable(r)) {
+      return '<span title="WLMA มีหลายราคา/หน่วย จึงคำนวณยอดใหม่ไม่ได้">' + WP.fmt(v.wQty) + '</span>';
+    }
+    var shown = (v.wQty === null || v.wQty === undefined) ? 0 : v.wQty;
+    var borrowed = (r.wPrice === null || r.wPrice === undefined);
+    var tip = borrowed ? ' title="WLMA ไม่มีรายการนี้ — คำนวณยอดโดยใช้ราคา/หน่วยของ P-1"' : '';
+    var p1v = (v.p1Qty === null || v.p1Qty === undefined) ? 0 : v.p1Qty;
+    var diff = Math.abs(shown - p1v) >= WP.EPS;
+    var base = (r.wQty === null || r.wQty === undefined) ? 0 : r.wQty;
+    return '<input class="qty" data-side="w" type="text"' + tip + ' value="' + WP.fmt(shown) + '">' +
+      sideBtn('w', state.editsW[r.keyStr] !== undefined, diff, base, 'ใช้ค่าจาก P-1');
   }
 
   function sign(v) {
@@ -1172,13 +1342,176 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('mClose').addEventListener('click', closeDetail);
   $('mClose2').addEventListener('click', closeDetail);
   $('ovl').addEventListener('click', function (e) { if (e.target === $('ovl')) closeDetail(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDetail(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    closeDetail();
+    var s = $('ovl2'); if (s) s.classList.remove('show');
+  });
 
   $('onlyDiff').addEventListener('change', render);
   $('btnReset').addEventListener('click', function () {
-    if (!Object.keys(state.edits).length) return;
-    if (!confirm('ล้างการแก้ไขทั้งหมดกลับเป็นค่าเดิมจากไฟล์ P-1?')) return;
-    state.edits = {}; render();
+    if (!Object.keys(state.edits).length && !Object.keys(state.editsW).length) return;
+    if (!confirm('ล้างการแก้ไขทั้งหมด (ทั้งฝั่ง P-1 และ WLMA) กลับเป็นค่าเดิมจากไฟล์?')) return;
+    state.edits = {}; state.editsW = {}; render();
+  });
+
+  /* ---------- สรุปการปรับแก้ ---------- */
+  function collectChanges() {
+    var p1 = [], wl = [];
+    state.rows.forEach(function (r) {
+      var v = viewOf(r);
+      if (state.edits[r.keyStr] !== undefined) {
+        p1.push({
+          path: r.fullPath, leaf: r.leafText, unit: r.unit || '', row: r.row,
+          oldQty: r.p1Qty, newQty: v.p1Qty, price: r.p1Price,
+          oldAmt: r.p1Amount, newAmt: v.p1Amount
+        });
+      }
+      if (state.editsW[r.keyStr] !== undefined) {
+        wl.push({
+          path: r.fullPath, leaf: r.leafText, unit: r.unit || '', jobs: (r.wDetails || []).length,
+          oldQty: r.wQty, newQty: v.wQty, price: r.wPrice,
+          oldAmt: r.wTotal, newAmt: v.wTotal
+        });
+      }
+    });
+    var byItem = function (a, b) { return String(a.path).localeCompare(String(b.path), 'th'); };
+    p1.sort(byItem); wl.sort(byItem);
+    return { p1: p1, wl: wl };
+  }
+
+  function num(v, cls) {
+    return '<td class="num' + (cls ? ' ' + cls : '') + '">' + WP.fmt(v) + '</td>';
+  }
+
+  function fillChangeTable(headId, bodyId, list, sideLabel) {
+    var heads = ['รายการ', 'หน่วย', (sideLabel === 'p1' ? 'แถวใน P-1' : 'จำนวนบรรทัด WLMA'),
+                 'ปริมาณเดิม', 'ปริมาณใหม่', 'ส่วนต่างปริมาณ',
+                 'ราคา/หน่วย', 'ยอดเงินเดิม', 'ยอดเงินใหม่', 'ส่วนต่างยอดเงิน'];
+    if (!list.length) {
+      $(headId).innerHTML = '';
+      $(bodyId).innerHTML = '<tr><td class="empty">— ไม่มีการปรับแก้ฝั่งนี้ —</td></tr>';
+      return;
+    }
+    $(headId).innerHTML = '<tr>' + heads.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr>';
+    $(bodyId).innerHTML = list.map(function (c) {
+      var dq = c.newQty - c.oldQty, da = (c.newAmt || 0) - (c.oldAmt || 0);
+      return '<tr>' +
+        '<td style="text-align:left;white-space:normal;max-width:330px">' + esc(c.leaf) +
+          '<div style="font-size:12px;color:var(--muted)">' + esc(String(c.path).split(' / ')[0]) + '</div></td>' +
+        '<td>' + esc(c.unit) + '</td>' +
+        '<td class="num">' + (sideLabel === 'p1' ? (c.row || '—') : c.jobs) + '</td>' +
+        num(c.oldQty) + num(c.newQty) +
+        '<td class="num ' + (dq < 0 ? 'dn' : 'up') + '">' + (dq > 0 ? '+' : '−') + WP.fmt(Math.abs(dq)) + '</td>' +
+        num(c.price) + num(c.oldAmt) + num(c.newAmt) +
+        '<td class="num ' + (da < 0 ? 'dn' : 'up') + '">' + (da > 0 ? '+' : '−') + WP.fmt(Math.abs(da)) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function openSummary() {
+    var ch = collectChanges();
+    var sumP1 = ch.p1.reduce(function (a, c) { return a + ((c.newAmt || 0) - (c.oldAmt || 0)); }, 0);
+    var sumW = ch.wl.reduce(function (a, c) { return a + ((c.newAmt || 0) - (c.oldAmt || 0)); }, 0);
+    var grandP1 = state.rows.reduce(function (a, r) { return a + (viewOf(r).p1Amount || 0); }, 0);
+
+    $('sCtx').innerHTML = 'ไฟล์ WLMA: <b>' + esc(state.wlmaName) + '</b> · ไฟล์ P-1: <b>' + esc(state.p1Name) +
+      '</b> · สัญญา: <b>' + esc(state.ctx.contract || '—') + '</b> · โซน: <b>' + esc(state.ctx.zone) + '</b>';
+
+    $('sKv').innerHTML = [
+      ['รายการที่ตรวจทั้งหมด', state.rows.length.toLocaleString() + ' รายการ'],
+      ['ปรับแก้ฝั่ง P-1', ch.p1.length.toLocaleString() + ' รายการ'],
+      ['ปรับแก้ฝั่ง WLMA', ch.wl.length.toLocaleString() + ' รายการ'],
+      ['ผลรวมที่เปลี่ยนฝั่ง P-1', WP.fmt(sumP1) + ' บาท'],
+      ['ผลรวมที่เปลี่ยนฝั่ง WLMA', WP.fmt(sumW) + ' บาท'],
+      ['ยอดเบิกรวมหลังปรับแก้', WP.fmt(grandP1) + ' บาท']
+    ].map(function (kv) {
+      return '<div class="b"><div class="k">' + esc(kv[0]) + '</div><div class="v">' + esc(kv[1]) + '</div></div>';
+    }).join('');
+
+    fillChangeTable('sP1Head', 'sP1Body', ch.p1, 'p1');
+    fillChangeTable('sWHead', 'sWBody', ch.wl, 'w');
+    $('ovl2').classList.add('show');
+  }
+
+  function closeSummary() { $('ovl2').classList.remove('show'); }
+  $('btnSummary').addEventListener('click', openSummary);
+  $('sClose').addEventListener('click', closeSummary);
+  $('sClose2').addEventListener('click', closeSummary);
+  $('ovl2').addEventListener('click', function (e) { if (e.target === $('ovl2')) closeSummary(); });
+
+  /* ---------- บันทึกสรุปเป็นไฟล์ Excel ---------- */
+  $('sSave').addEventListener('click', function () {
+    var ch = collectChanges();
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet('สรุปการปรับแก้');
+    var FONT = { name: 'TH SarabunPSK', size: 14 };
+    var HFILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A86C5' } };
+
+    function put(row, vals, opt) {
+      opt = opt || {};
+      vals.forEach(function (v, i) {
+        var c = ws.getCell(row, i + 1);
+        // ปัดเศษทศนิยมลอยตัว (เช่น 13.299999999999999) ให้เป็นค่าที่สะอาด
+        if (typeof v === 'number' && isFinite(v)) v = Math.round(v * 100) / 100;
+        c.value = v;
+        c.font = Object.assign({}, FONT, opt.bold ? { bold: true } : {}, opt.head ? { bold: true, color: { argb: 'FFFFFFFF' } } : {});
+        if (opt.head) c.fill = HFILL;
+        if (typeof v === 'number') { c.numFmt = '#,##0.##'; c.alignment = { horizontal: 'center' }; }
+        if (opt.head) c.alignment = { horizontal: 'center', wrapText: true };
+      });
+      return row + 1;
+    }
+
+    var r = 1;
+    r = put(r, ['สรุปการปรับแก้การเบิกค่าแรง — WLMA Payment Checking'], { bold: true });
+    r = put(r, ['ไฟล์ WLMA', state.wlmaName]);
+    r = put(r, ['ไฟล์ P-1', state.p1Name]);
+    r = put(r, ['เลขที่สัญญา', state.ctx.contract || '—']);
+    r = put(r, ['โซน', state.ctx.zone]);
+    r = put(r, ['วันที่จัดทำ', new Date().toLocaleString('th-TH')]);
+    r = put(r, ['รายการที่ตรวจทั้งหมด', state.rows.length]);
+    r++;
+
+    var heads1 = ['รายการ', 'หมวดหมู่', 'หน่วย', 'แถวใน P-1', 'ปริมาณเดิม', 'ปริมาณใหม่',
+                  'ส่วนต่างปริมาณ', 'ราคา/หน่วย', 'ยอดเงินเดิม', 'ยอดเงินใหม่', 'ส่วนต่างยอดเงิน'];
+    r = put(r, ['การปรับแก้ฝั่ง P-1 (เอกสารเบิกจ่ายเงิน) — ' + ch.p1.length + ' รายการ'], { bold: true });
+    r = put(r, heads1, { head: true });
+    if (!ch.p1.length) r = put(r, ['— ไม่มีการปรับแก้ —']);
+    ch.p1.forEach(function (c) {
+      r = put(r, [c.leaf, String(c.path).split(' / ')[0], c.unit, c.row,
+                  c.oldQty, c.newQty, c.newQty - c.oldQty, c.price,
+                  c.oldAmt, c.newAmt, (c.newAmt || 0) - (c.oldAmt || 0)]);
+    });
+    r++;
+
+    var heads2 = ['รายการ', 'หมวดหมู่', 'หน่วย', 'จำนวนบรรทัดใน WLMA', 'ปริมาณเดิม', 'ปริมาณใหม่',
+                  'ส่วนต่างปริมาณ', 'ราคา/หน่วย', 'ยอดเงินเดิม', 'ยอดเงินใหม่', 'ส่วนต่างยอดเงิน'];
+    r = put(r, ['การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA) — ' + ch.wl.length + ' รายการ'], { bold: true });
+    r = put(r, heads2, { head: true });
+    if (!ch.wl.length) r = put(r, ['— ไม่มีการปรับแก้ —']);
+    ch.wl.forEach(function (c) {
+      r = put(r, [c.leaf, String(c.path).split(' / ')[0], c.unit, c.jobs,
+                  c.oldQty, c.newQty, c.newQty - c.oldQty, c.price,
+                  c.oldAmt, c.newAmt, (c.newAmt || 0) - (c.oldAmt || 0)]);
+    });
+
+    ws.columns.forEach(function (col, i) { col.width = (i === 0) ? 46 : (i === 1 ? 30 : 15); });
+
+    var name = outName(state.p1Name).replace('_checked_', '_summary_');
+    wb.xlsx.writeBuffer().then(function (buf) {
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      closeSummary();
+      say('okm', 'บันทึกไฟล์สรุปแล้ว — ชื่อไฟล์: <b>' + esc(name) + '</b>');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }).catch(function (err) {
+      say('err', 'บันทึกไฟล์สรุปไม่สำเร็จ: ' + err.message);
+    });
   });
 
   /* ---------- export ---------- */
