@@ -48,8 +48,9 @@
   .msg.info{background:var(--info);color:var(--info-ink)}
   .msg.okm{background:var(--ok);color:var(--ok-ink)}
   .tablescroll{overflow:auto;border:1px solid var(--grid);border-radius:8px;max-height:72vh}
-  table{border-collapse:collapse;width:100%;min-width:1420px;font-size:14.5px;background:var(--panel)}
-  th,td{border:1px solid var(--grid);padding:6px 8px;text-align:center;white-space:nowrap}
+  table{border-collapse:collapse;width:100%;min-width:1100px;font-size:14.5px;background:var(--panel);
+    table-layout:fixed}
+  th,td{border:1px solid var(--grid);padding:6px 5px;text-align:center;white-space:nowrap;overflow:hidden}
   thead th{background:var(--hdr);color:var(--hdrink);font-weight:600;position:sticky;top:0;z-index:3}
   thead tr:nth-child(2) th{top:35px}
   thead th[data-sort]{cursor:pointer;user-select:none;position:sticky}
@@ -60,9 +61,21 @@
   th.g-qty{background:var(--hd-qty)}th.g-price{background:var(--hd-price)}th.g-money{background:var(--hd-money)}
   tbody tr{cursor:pointer}
   tbody tr:hover td{filter:brightness(.975)}
-  td.item{text-align:left;white-space:normal;min-width:310px;max-width:390px;font-size:14px;line-height:1.45}
-  td.item .parent{color:var(--muted);font-size:12.5px;display:block}
-  td.item .leaf{font-weight:700;display:block;margin-top:2px}
+  /* กำหนดความกว้างคอลัมน์แบบตายตัว (table-layout:fixed) ให้ตารางพอดีจอ ไม่ต้องมี scroll แนวนอน */
+  col.c-seq{width:40px} col.c-item{width:190px} col.c-unit{width:48px}
+  col.c-q{width:82px}      /* ปริมาณ P-1 / WLMA (มีช่องกรอก + ปุ่ม) */
+  col.c-p{width:62px}      /* ราคา/หน่วย P-1 / WLMA */
+  col.c-d{width:58px}      /* ผลต่าง */
+  col.c-note{width:78px}   /* หมายเหตุ ปริมาณ / ราคา */
+  col.c-money{width:82px}  /* ยอดเงิน */
+  col.c-mnote{width:116px} /* หมายเหตุ ยอดเงิน (มีบรรทัดสาเหตุ) */
+
+  td.item{text-align:left;white-space:normal;font-size:13.5px;line-height:1.4}
+  /* ตัดชื่อหมวดชั้นบนให้เหลือ 2 บรรทัด (ชี้เมาส์เพื่อดูข้อความเต็ม) แถวจะได้ไม่สูงเกินไป */
+  td.item .parent{color:var(--muted);font-size:11.5px;display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+  td.item .leaf{font-weight:700;display:block;margin-top:2px;white-space:normal}
+  td.c-qty,td.c-price,td.c-money,td.d{white-space:normal}
   td.num{text-align:center;font-variant-numeric:tabular-nums}
   .c-qty{background:var(--grp-qty)} .c-price{background:var(--grp-price)} .c-money{background:var(--grp-money)}
   .d{font-weight:700;border-left-width:2.5px;border-right-width:2.5px;border-left-style:solid;border-right-style:solid}
@@ -72,18 +85,24 @@
   th.d-qty{background:var(--hd-qty);border-left-color:#bcd8f2;border-right-color:#bcd8f2}
   th.d-price{background:var(--hd-price);border-left-color:#f2ddbc;border-right-color:#f2ddbc}
   th.d-money{background:var(--hd-money);border-left-color:#bce0cc;border-right-color:#bce0cc}
-  .spacer{background:repeating-linear-gradient(45deg,transparent,transparent 5px,var(--line) 5px,var(--line) 6px);
-    min-width:26px;width:26px;border-top:none;border-bottom:none}
-  .note{font-size:13px;padding:3px 7px;border-radius:5px;display:inline-block;white-space:normal;font-weight:600}
+  tfoot tr.totrow td{position:sticky;bottom:0;z-index:2;background:var(--panel);
+    border-top:2.5px solid var(--hdr);font-weight:700;font-size:15px}
+  tfoot td.totlabel{text-align:right;padding-right:14px;color:var(--accent)}
+  tfoot td.c-money{background:var(--grp-money)}
+  tfoot td.d-money{background:var(--d-money)}
+  .note{font-size:12.5px;padding:3px 5px;border-radius:5px;display:inline-block;white-space:normal;font-weight:600;
+    line-height:1.3}
   .n-ok{background:var(--ok);color:var(--ok-ink)}
   .n-bad{background:var(--bad);color:var(--bad-ink)}
   .n-warn{background:var(--warn);color:var(--warn-ink)}
   .n-info{background:var(--info);color:var(--info-ink)}
-  .cause{display:block;font-size:12px;color:var(--muted);margin-top:4px;white-space:normal;line-height:1.4}
-  input.qty{width:92px;padding:5px 7px;border:1px solid var(--edit-line);border-radius:5px;background:var(--edit);
-    color:var(--ink);text-align:center;font-family:inherit;font-size:14.5px;font-variant-numeric:tabular-nums}
-  .useBtn{padding:2px 8px;font-size:12.5px;font-weight:500;background:transparent;color:var(--accent);
-    border:1px solid var(--d-qty-line);border-radius:5px;margin-top:4px}
+  .cause{display:block;font-size:11px;color:var(--muted);margin-top:3px;white-space:normal;line-height:1.3}
+  input.qty{width:100%;max-width:72px;padding:4px 4px;border:1px solid var(--edit-line);border-radius:5px;
+    background:var(--edit);color:var(--ink);text-align:center;font-family:inherit;font-size:14px;
+    font-variant-numeric:tabular-nums}
+  .useBtn{padding:2px 5px;font-size:11.5px;font-weight:500;background:transparent;color:var(--accent);
+    border:1px solid var(--d-qty-line);border-radius:5px;margin-top:3px;white-space:normal;
+    line-height:1.25;display:inline-block;max-width:100%}
   .useBtn.undo{color:var(--muted);border-color:var(--grid)}
   .useBtn.undo:hover{color:var(--bad-ink);border-color:var(--bad-ink)}
   .edited{outline:2px solid var(--edit-line);outline-offset:-2px}
@@ -176,12 +195,14 @@
 
 <div id="resultArea" class="hidden">
 
+  <!-- ปิดคำอธิบายไว้ก่อนตามที่ผู้ใช้แจ้ง — เปิดกลับได้โดยลบเครื่องหมาย comment นี้ออก
   <div class="banner">
     <b>ยึด P-1 เป็นหลัก</b> — ค่า "ผลต่าง" คำนวณเป็น <code>P-1 − WLMA</code> ·
     ค่าบวก = P-1 เบิกมากกว่าที่บันทึกไว้ใน WLMA · ค่าลบ = P-1 เบิกน้อยกว่างานที่บันทึกไว้ ·
     แก้ไขได้เฉพาะช่อง <b>ปริมาณ P-1</b> และเฉพาะแถวที่ <b>ราคา/หน่วยตรงกัน</b> ·
     <b>คลิกที่แถวใดก็ได้</b> เพื่อดูหมายเลขงานและรายการเบิกที่รวมอยู่ในยอดนั้น
   </div>
+  -->
 
   <div class="card">
     <h2>2 · สรุปผล</h2>
@@ -202,6 +223,12 @@
     </div>
     <div class="tablescroll">
       <table id="tbl">
+        <colgroup>
+          <col class="c-seq"><col class="c-item"><col class="c-unit">
+          <col class="c-q"><col class="c-q"><col class="c-d"><col class="c-note">
+          <col class="c-p"><col class="c-p"><col class="c-d"><col class="c-note">
+          <col class="c-money"><col class="c-money"><col class="c-d"><col class="c-mnote">
+        </colgroup>
         <thead>
           <tr>
             <th rowspan="2" data-sort="seq" title="รายการที่ไม่ตรงกันขึ้นก่อน แล้วเรียงตามลำดับหัวข้อ">ลำดับ</th>
@@ -209,22 +236,22 @@
             <th rowspan="2" data-sort="unit">หน่วย</th>
             <th class="g-qty" colspan="4">ปริมาณ</th>
             <th class="g-price" colspan="4">ราคา/หน่วย</th>
-            <th class="g-money" colspan="3">ยอดเงิน</th>
-            <th rowspan="2" class="spacer"></th>
-            <th class="g-money" rowspan="2" data-sort="mnote">หมายเหตุ ยอดเงิน</th>
+            <th class="g-money" colspan="4">ยอดเงิน</th>
           </tr>
           <tr>
             <th class="g-qty" data-sort="p1qty">P-1</th><th class="g-qty" data-sort="wqty">WLMA</th>
-            <th class="d d-qty" data-sort="dqty">ผลต่าง<br>ปริมาณ</th>
-            <th class="g-qty" data-sort="qnote">หมายเหตุ<br>ปริมาณ</th>
+            <th class="d d-qty" data-sort="dqty">ผลต่าง</th>
+            <th class="g-qty" data-sort="qnote">หมายเหตุ</th>
             <th class="g-price" data-sort="p1price">P-1</th><th class="g-price" data-sort="wprice">WLMA</th>
-            <th class="d d-price" data-sort="dprice">ผลต่าง<br>ราคา/หน่วย</th>
-            <th class="g-price" data-sort="pnote">หมายเหตุ<br>ราคา/หน่วย</th>
+            <th class="d d-price" data-sort="dprice">ผลต่าง</th>
+            <th class="g-price" data-sort="pnote">หมายเหตุ</th>
             <th class="g-money" data-sort="p1amt">P-1</th><th class="g-money" data-sort="wamt">WLMA</th>
-            <th class="d d-money" data-sort="damt">ผลต่าง<br>ยอดเงิน</th>
+            <th class="d d-money" data-sort="damt">ผลต่าง</th>
+            <th class="g-money" data-sort="mnote">หมายเหตุ</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
       </table>
     </div>
     <div class="legend">
@@ -1137,7 +1164,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       tr.setAttribute('data-i', idx);
       tr.innerHTML =
         '<td class="num">' + n + '</td>' +
-        '<td class="item"><span class="parent">' + esc(r.parentPath) + '</span>' +
+        '<td class="item" title="' + esc(r.fullPath) + '"><span class="parent">' + esc(r.parentPath) + '</span>' +
           '<span class="leaf">' + esc(r.leafText) + '</span></td>' +
         '<td class="num">' + esc(r.unit || '—') + '</td>' +
         '<td class="num c-qty' + (edited ? ' edited' : '') + '">' + qtyCell(r, v) + '</td>' +
@@ -1151,7 +1178,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         '<td class="num c-money">' + WP.fmt(mP1) + '</td>' +
         '<td class="num c-money">' + WP.fmt(mW) + '</td>' +
         '<td class="num d d-money">' + sign(dMoney) + '</td>' +
-        '<td class="spacer"></td>' +
         '<td class="c-money"><span class="note ' + mn.cls + '">' + mn.text + '</span>' +
           (mn.cause ? '<span class="cause">' + esc(mn.cause) +
             (mn.causeSub ? '<br>' + esc(mn.causeSub) : '') + '</span>' : '') + '</td>';
@@ -1203,6 +1229,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       tr.addEventListener('click', function () { openDetail(idx); });
     });
 
+    renderTotals();
     markHeaders();
     renderSummary();
     var ec = Object.keys(state.edits).length, ew = Object.keys(state.editsW).length;
@@ -1237,7 +1264,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var base = (r.p1Qty === null || r.p1Qty === undefined) ? 0 : r.p1Qty;
     return '<input class="qty" data-side="p" type="text" value="' + WP.fmt(shown) + '">' +
       sideBtn('p', state.edits[r.keyStr] !== undefined, diff, base,
-              target === 0 ? 'ปรับเป็น 0' : 'ใช้ค่าจาก WLMA');
+              target === 0 ? 'ปรับเป็น 0' : 'ใช้ค่า WLMA');
   }
 
   /* ปุ่มใต้ช่องแก้ไข — ถ้าแก้ไปแล้วจะกลายเป็นปุ่ม "คืนค่าเดิม" เพื่อกดกลับได้ */
@@ -1263,13 +1290,35 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var diff = Math.abs(shown - p1v) >= WP.EPS;
     var base = (r.wQty === null || r.wQty === undefined) ? 0 : r.wQty;
     return '<input class="qty" data-side="w" type="text"' + tip + ' value="' + WP.fmt(shown) + '">' +
-      sideBtn('w', state.editsW[r.keyStr] !== undefined, diff, base, 'ใช้ค่าจาก P-1');
+      sideBtn('w', state.editsW[r.keyStr] !== undefined, diff, base, 'ใช้ค่า P-1');
   }
 
   function sign(v) {
     if (v === null || v === undefined || !isFinite(v)) return '—';
     if (Math.abs(v) < 1e-9) return '0';
     return (v > 0 ? '+' : '−') + WP.fmt(Math.abs(v));
+  }
+
+  /* แถวผลรวมท้ายตาราง — เทียบยอดเงินรวมฝั่ง P-1 กับ WLMA (นับทุกรายการ ไม่ขึ้นกับตัวกรอง) */
+  function renderTotals() {
+    var tp = 0, tw = 0;
+    state.rows.forEach(function (r) {
+      var v = viewOf(r);
+      tp += n0(v.p1Amount);
+      tw += n0(v.wTotal);
+    });
+    var d = tp - tw;
+    var ok = Math.abs(d) < WP.EPS_MONEY;
+    $('tfoot').innerHTML =
+      '<tr class="totrow">' +
+      '<td colspan="11" class="totlabel">ผลรวมยอดเงินทั้งหมด (' + state.rows.length + ' รายการ)</td>' +
+      '<td class="num c-money">' + WP.fmt(tp) + '</td>' +
+      '<td class="num c-money">' + WP.fmt(tw) + '</td>' +
+      '<td class="num d d-money">' + sign(d) + '</td>' +
+      '<td class="c-money"><span class="note ' + (ok ? 'n-ok' : (d > 0 ? 'n-warn' : 'n-bad')) + '">' +
+        (ok ? 'ยอดรวมตรงกัน' : (d > 0 ? 'P-1 เกิน ' + WP.fmt(Math.abs(d)) + ' บาท'
+                                      : 'P-1 ขาด ' + WP.fmt(Math.abs(d)) + ' บาท')) + '</span></td>' +
+      '</tr>';
   }
 
   function renderSummary() {
