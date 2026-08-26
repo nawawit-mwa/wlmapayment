@@ -1244,10 +1244,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('btnSummary').disabled = blockers > 0;
     if (blockers > 0) {
       hint.className = 'hint';
-      hint.textContent = 'ยังมี ' + blockers + ' รายการที่ยอดเงินไม่ตรง — แก้ให้ตรงก่อนจึงจะบันทึกไฟล์ได้';
+      hint.textContent = 'ยังมี ' + blockers + ' รายการที่ยอดเงินไม่ตรง — ' +
+        'แก้ให้ตรงก่อน สามารถตรวจสอบ สรุปแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
     } else {
       hint.className = 'hint ready';
-      hint.textContent = '✓ ยอดเงินตรงกันครบทุกรายการ — บันทึกไฟล์ได้';
+      hint.textContent = '✓ ยอดเงินตรงกันครบทุกรายการ — สรุปแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
     }
 
     $('ctxLine').innerHTML = 'ไฟล์ WLMA: <b>' + esc(state.wlmaName) + '</b> · ไฟล์ P-1: <b>' + esc(state.p1Name) +
