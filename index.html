@@ -106,6 +106,59 @@
   .useBtn.undo{color:var(--muted);border-color:var(--grid)}
   .useBtn.undo:hover{color:var(--bad-ink);border-color:var(--bad-ink)}
   .edited{outline:2px solid var(--edit-line);outline-offset:-2px}
+  /* กล่องสรุปจำนวนจุดงานท่อ ใต้ตาราง */
+  .pipebox{margin-top:14px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .pipebox h3{margin:0;padding:9px 13px;font-size:14.5px;background:var(--grp-money);color:var(--accent);
+    border-bottom:1px solid var(--line)}
+  table.pipe{width:100%;min-width:0;border-collapse:collapse;font-size:14.5px;table-layout:auto}
+  table.pipe th,table.pipe td{border:1px solid var(--grid);padding:7px 10px;text-align:center;white-space:nowrap}
+  table.pipe thead th{background:var(--hdr);color:#fff;position:static}
+  table.pipe td.lb{text-align:left;font-weight:600}
+  table.pipe td.num{font-variant-numeric:tabular-nums}
+  .pipefoot{padding:8px 13px;font-size:13px;color:var(--muted);line-height:1.55}
+
+  /* ---- popup สรุปรายหมวด ---- */
+    .catwrap{max-height:60vh;overflow:auto;border:1px solid var(--grid);border-radius:8px}
+  table.cat{width:100%;min-width:0;border-collapse:collapse;font-size:14px;table-layout:fixed}
+  table.cat th,table.cat td{border:1px solid var(--grid);padding:6px 8px;text-align:center;white-space:nowrap}
+  table.cat thead th{background:var(--hdr);color:#fff;position:sticky;top:0;z-index:2;font-weight:600;
+    white-space:normal;line-height:1.3}
+  table.cat col.k-no{width:52px} table.cat col.k-nm{width:auto} table.cat col.k-un{width:66px}
+  table.cat col.k-job{width:76px} table.cat col.k-n{width:88px} table.cat col.k-d{width:80px}
+  table.cat td.nm{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  table.cat td.n{font-variant-numeric:tabular-nums}
+  table.cat tbody tr:nth-child(even) td{background:rgba(0,0,0,.018)}
+  table.cat tbody tr.warn td{background:var(--bad)}
+  table.cat td.job{background:var(--grp-qty);font-weight:600}
+  table.cat td.dif{font-weight:700}
+  table.cat td.dif.ok{color:var(--ok-ink)} table.cat td.dif.no{color:var(--bad-ink)}
+  table.cat tfoot td{position:sticky;bottom:0;background:var(--panel);border-top:2.5px solid var(--hdr);
+    font-weight:700;font-variant-numeric:tabular-nums}
+  table.cat tfoot td.lbl{text-align:right;color:var(--accent)}
+  table.cat tbody tr.clk{cursor:pointer}
+  table.cat tbody tr.clk:hover td{filter:brightness(.96)}
+
+  /* ---- popup ชั้น 3 : รายละเอียดในหมวด ----
+     ต้องซ้อนทับ popup ชั้น 2 (สรุปรายหมวด) ที่ยังเปิดค้างอยู่ข้างหลัง */
+  #ovl4{z-index:60}
+  .tabbar{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
+  .tabbar .grow{flex:1}
+  button.tab{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:7px;
+    padding:6px 14px;font-size:14px;font-weight:600}
+  button.tab.on{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  .srch{width:250px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);
+    color:var(--ink);font-size:13.5px;font-family:inherit}
+  .pill{background:var(--warn);color:var(--warn-ink);border-radius:20px;padding:4px 10px;font-size:12.5px;
+    font-weight:600;cursor:pointer;white-space:nowrap}
+  .pill::after{content:" ✕";opacity:.7}
+  table.det2{table-layout:auto}
+  table.det2 td{white-space:nowrap}
+  table.det2 td.itm{text-align:left;white-space:normal;min-width:210px;max-width:330px;line-height:1.4}
+  table.det2 td.lines{text-align:left;white-space:normal;min-width:230px;font-size:13px;line-height:1.5}
+  table.det2 tbody tr.multi td{background:var(--warn)}
+  table.det2 .qsm{color:var(--muted);font-size:12.5px}
+  table.det2 td.seq{width:52px;color:var(--muted);background:var(--bg)}
+  table.det2 tbody tr.multi td.seq{background:var(--warn)}
   .legend{display:flex;gap:17px;flex-wrap:wrap;font-size:14.5px;margin-top:13px}
   .legend div{display:flex;align-items:center;gap:7px}
   .sw{width:16px;height:16px;border-radius:4px;border:1px solid var(--grid);flex:none}
@@ -114,8 +167,9 @@
   .stat .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
   .stat .l{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.35}
   .hidden{display:none}
-  .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:13px}
+  .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
   .toolbar .grow{flex:1}
+  .hintrow{margin-bottom:12px;text-align:right}
   code{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:14px}
   .foot{font-size:14px;color:var(--muted);margin-top:13px;line-height:1.6}
   .hint{font-size:13px;color:var(--bad-ink);background:var(--bad);padding:4px 10px;border-radius:6px}
@@ -214,13 +268,14 @@
     <h2>3 · ตารางเปรียบเทียบรายไอเท็ม</h2>
     <div class="toolbar">
       <label style="font-size:15px"><input type="checkbox" id="onlyDiff"> แสดงเฉพาะรายการที่ไม่ตรงกัน</label>
-      <span class="grow"></span>
       <span class="tag" id="editCount"></span>
-      <span class="hint" id="exportHint"></span>
+      <span class="grow"></span>
+      <button class="ghost" id="btnCat">สรุปรายหมวด</button>
       <button class="ghost" id="btnReset">ล้างการแก้ไขทั้งหมด</button>
       <button class="ghost" id="btnSummary" disabled>สรุปแก้ไข</button>
       <button id="btnExport" disabled>บันทึกเป็นไฟล์ P-1</button>
     </div>
+    <div class="hintrow"><span class="hint" id="exportHint"></span></div>
     <div class="tablescroll">
       <table id="tbl">
         <colgroup>
@@ -254,6 +309,8 @@
         <tfoot id="tfoot"></tfoot>
       </table>
     </div>
+    <div class="pipebox" id="pipeBox"></div>
+
     <div class="legend">
       <div><span class="sw" style="background:var(--d-qty);border-color:var(--d-qty-line);border-width:2.5px"></span> ช่องผลต่าง</div>
       <div><span class="sw" style="background:var(--ok)"></span> ตรงกัน</div>
@@ -287,6 +344,54 @@
       <div class="detwrap"><table class="det"><thead id="mDetHead"></thead><tbody id="mDetBody"></tbody></table></div>
     </div>
     <div class="mf"><button class="ghost" id="mClose2">ปิด</button></div>
+  </div>
+</div>
+
+<!-- popup ชั้น 3 : รายละเอียดในหมวด -->
+<div class="ovl" id="ovl4">
+  <div class="modal">
+    <div class="mh">
+      <div style="flex:1;min-width:0">
+        <h3 id="dTitle">รายละเอียดหมวด</h3>
+        <div class="p" id="dSum"></div>
+      </div>
+      <button class="xbtn" id="dClose">ปิด</button>
+    </div>
+    <div class="mb">
+      <div class="tabbar">
+        <button class="tab on" id="dTab1" data-tab="item">รายการเบิก</button>
+        <button class="tab" id="dTab2" data-tab="job">รายการงาน (job)</button>
+        <span class="grow"></span>
+        <span class="pill hidden" id="dFilterPill"></span>
+        <input type="text" id="dSearch" class="srch" placeholder="ค้นหา… เลขงาน / พื้นที่ / ทีม / รายการ">
+      </div>
+      <div class="catwrap" style="max-height:56vh">
+        <table class="cat det2"><thead id="dHead"></thead><tbody id="dBody"></tbody></table>
+      </div>
+      <div class="pipefoot" id="dNote"></div>
+    </div>
+    <div class="mf"><button class="ghost" id="dClose2">ปิด</button></div>
+  </div>
+</div>
+
+<!-- popup สรุปรายหมวด -->
+<div class="ovl" id="ovl3">
+  <div class="modal modal-cat">
+    <div class="mh">
+      <div>
+        <h3>สรุปรายหมวด — เทียบจำนวนรายการกับจุดงาน</h3>
+        <div class="p" id="cCtx"></div>
+      </div>
+      <button class="xbtn" id="cClose">ปิด</button>
+    </div>
+    <div class="mb">
+      <div class="catwrap"><table class="cat">
+        <colgroup><col class="k-no"><col class="k-nm"><col class="k-un"><col class="k-job">
+          <col class="k-n"><col class="k-n"><col class="k-d"></colgroup>
+        <thead id="cHead"></thead><tbody id="cBody"></tbody><tfoot id="cFoot"></tfoot></table></div>
+      <div class="pipefoot" id="cNote"></div>
+    </div>
+    <div class="mf"><button class="ghost" id="cClose2">ปิด</button></div>
   </div>
 </div>
 
@@ -733,6 +838,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         p1Cumulative: p1 ? p1.cumulative : null,
         wQty: wQty, wPrice: wPrice, wTotal: wTotal,
         wDetails: w ? w.details : [],
+        // ข้อความรายละเอียดเต็มจาก WLMA — ใช้เป็นตัวสำรองตอนอ่าน "ขนาด ศก."
+        // เพราะชื่อรายการใน P-1 ที่ยาวเกิน 1 บรรทัดจะถูกตัด ทำให้ขนาดหาย
+        wDesc: w ? w.sampleDesc : '',
         wPriceList: w ? w.prices.slice() : [],
         priceAmbiguous: priceAmbiguous,
         wRowCount: w ? w.count : 0,
@@ -1230,6 +1338,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     renderTotals();
+    renderPipeBox();
     markHeaders();
     renderSummary();
     var ec = Object.keys(state.edits).length, ew = Object.keys(state.editsW).length;
@@ -1322,6 +1431,84 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       '</tr>';
   }
 
+  /* ---------- นับจุดงานท่อจ่ายน้ำ / ท่อบริการ ----------
+     กติกาที่ตกลงกันไว้:
+       • นับเฉพาะรายการที่หน่วยเป็น "จุด"
+       • และอยู่ในหมวดที่เป็นงานซ่อมท่อ/งานขุดซ่อมท่อเท่านั้น
+         (ตัดงานประตูน้ำ หัวดับเพลิง สำรวจข้อร้องเรียน วัดคลอรีน Blow off ฯลฯ ออก)
+       • ท่อบริการ = ศก. ≤ 50 มม.  ·  ท่อจ่ายน้ำ = ศก. ≥ 100 มม.
+       • ช่วงขนาดใช้ตัวเลขแรก เช่น "ศก. 15-25 มม." → 15
+       • ถ้าชื่อรายการใน P-1 ถูกตัดจนไม่มีขนาด ให้อ่านจากข้อความเต็มของ WLMA แทน
+     "รายการ" = ผลรวมปริมาณ · "จุดงาน" = จำนวนหมายเลขงาน (job) ไม่ซ้ำ ซึ่งมีเฉพาะฝั่ง WLMA */
+  function pipeSizeOf(r) {
+    var s = sizeOf(r.leafText);
+    if (s === null) s = sizeOf(r.wDesc);
+    return s;
+  }
+
+  function pipeStats() {
+    var G = {
+      svc:  { p1: 0, w: 0, jobs: {} },
+      dist: { p1: 0, w: 0, jobs: {} },
+      skip: { p1: 0, w: 0, jobs: {} }   // อยู่ในหมวดซ่อมท่อ แต่อ่านขนาดไม่ได้
+    };
+    state.rows.forEach(function (r) {
+      if (String(r.unit || '').trim() !== 'จุด') return;
+      if (!isPipeWork(r)) return;
+      var s = pipeSizeOf(r);
+      var g = (s === null) ? 'skip' : (s <= 50 ? 'svc' : (s >= 100 ? 'dist' : 'skip'));
+      var v = viewOf(r);
+      G[g].p1 += n0(v.p1Qty);
+      G[g].w += n0(v.wQty);
+      (r.wDetails || []).forEach(function (d) { if (d.job) G[g].jobs[d.job] = 1; });
+    });
+    return G;
+  }
+
+  function renderPipeBox() {
+    var G = pipeStats();
+    var jobsAll = {};
+    ['svc', 'dist'].forEach(function (k) { Object.keys(G[k].jobs).forEach(function (j) { jobsAll[j] = 1; }); });
+    var nSvc = Object.keys(G.svc.jobs).length, nDist = Object.keys(G.dist.jobs).length;
+    var nAll = Object.keys(jobsAll).length;
+    var overlap = nSvc + nDist - nAll;
+
+    function row(label, g, nJob) {
+      var d = g.p1 - g.w;
+      return '<tr>' +
+        '<td class="lb">' + label + '</td>' +
+        '<td class="num">' + WP.fmt(g.p1) + '</td>' +
+        '<td class="num">' + WP.fmt(g.w) + '</td>' +
+        '<td class="num"><span class="note ' + (Math.abs(d) < WP.EPS ? 'n-ok' : 'n-bad') + '">' +
+          (Math.abs(d) < WP.EPS ? 'ตรงกัน' : sign(d)) + '</span></td>' +
+        '<td class="num">' + nJob.toLocaleString() + '</td></tr>';
+    }
+
+    var extra = '';
+    if (G.skip.p1 || G.skip.w) {
+      extra = '<br>⚠️ มีรายการในหมวดงานซ่อมท่อที่อ่านขนาดท่อไม่ได้ ' +
+        WP.fmt(G.skip.p1) + ' รายการ (P-1) — ไม่ถูกนับในกลุ่มใด';
+    }
+
+    $('pipeBox').innerHTML =
+      '<h3>จำนวนจุดงานซ่อมท่อ — แยกตามขนาดท่อ</h3>' +
+      '<table class="pipe"><thead><tr>' +
+        '<th>ประเภทท่อ</th><th>รายการ (P-1)</th><th>รายการ (WLMA)</th><th>ผลต่าง</th><th>จุดงาน (WLMA)</th>' +
+      '</tr></thead><tbody>' +
+        row('ท่อบริการ — ศก. ≤ 50 มม.', G.svc, nSvc) +
+        row('ท่อจ่ายน้ำ — ศก. ≥ 100 มม.', G.dist, nDist) +
+      '</tbody></table>' +
+      '<div class="pipefoot">' +
+        '<b>รายการ</b> = ผลรวมปริมาณที่เบิก · <b>จุดงาน</b> = จำนวนหมายเลขงานไม่ซ้ำในระบบ WLMA ' +
+        '(เอกสาร P-1 ไม่มีหมายเลขงาน จึงนับจุดงานได้เฉพาะฝั่ง WLMA)<br>' +
+        'นับเฉพาะรายการหน่วย "จุด" ในหมวดงานซ่อมท่อ/งานขุดซ่อมท่อ — ' +
+        'ไม่รวมงานประตูน้ำ หัวดับเพลิง สำรวจข้อร้องเรียน วัดคุณภาพน้ำ และงานอื่น ๆ' +
+        (overlap > 0 ? '<br>มี ' + overlap + ' จุดงานที่ซ่อมทั้งท่อบริการและท่อจ่ายน้ำในงานเดียวกัน ' +
+          'จึงถูกนับทั้งสองแถว (รวมจุดงานไม่ซ้ำจริง ' + nAll.toLocaleString() + ' จุดงาน)' : '') +
+        extra +
+      '</div>';
+  }
+
   function renderSummary() {
     var view = state.rows.map(viewOf);
     var s = WP.summarize(view);
@@ -1395,7 +1582,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     closeDetail();
-    var s = $('ovl2'); if (s) s.classList.remove('show');
+    ['ovl2', 'ovl3', 'ovl4'].forEach(function (id) { var m = $(id); if (m) m.classList.remove('show'); });
   });
 
   $('onlyDiff').addEventListener('change', render);
@@ -1404,6 +1591,300 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!confirm('ล้างการแก้ไขทั้งหมด (ทั้งฝั่ง P-1 และ WLMA) กลับเป็นค่าเดิมจากไฟล์?')) return;
     state.edits = {}; state.editsW = {}; render();
   });
+
+  /* ---------- สรุปรายหมวด ----------
+     รวมทุกรายการตามหมวดระดับบนสุด แล้วเทียบ
+       จุดงาน   = จำนวนหมายเลขงาน (job) ไม่ซ้ำในหมวดนั้น (มีเฉพาะฝั่ง WLMA)
+       รายการ   = ผลรวมปริมาณที่เบิก (ตามหน่วยของหมวดนั้น) */
+  function catStats() {
+    var cats = {};
+    state.rows.forEach(function (r) {
+      var top = String(r.fullPath || '').split(' / ')[0];
+      var sp = top.indexOf(' ');
+      var no = (sp > 0) ? top.slice(0, sp) : top;
+      var name = (sp > 0) ? top.slice(sp + 1) : '';
+      if (!cats[no]) cats[no] = { no: no, name: name, p1: 0, w: 0, jobs: {}, units: {} };
+      var c = cats[no], v = viewOf(r);
+      c.p1 += n0(v.p1Qty);
+      c.w += n0(v.wQty);
+      if (r.unit) c.units[String(r.unit).trim()] = 1;
+      (r.wDetails || []).forEach(function (d) { if (d.job) c.jobs[d.job] = 1; });
+    });
+    return Object.keys(cats).sort(function (a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); })
+      .map(function (k) { return cats[k]; });
+  }
+
+  function openCat() {
+    var list = catStats();
+    var allJobs = {}, tp = 0, tw = 0;
+    list.forEach(function (c) {
+      tp += c.p1; tw += c.w;
+      Object.keys(c.jobs).forEach(function (j) { allJobs[j] = 1; });
+    });
+
+    $('cCtx').innerHTML = 'ไฟล์ WLMA: <b>' + esc(state.wlmaName) + '</b> · ไฟล์ P-1: <b>' + esc(state.p1Name) +
+      '</b> · สัญญา: <b>' + esc(state.ctx.contract || '—') + '</b> · โซน: <b>' + esc(state.ctx.zone) + '</b>';
+
+    $('cHead').innerHTML =
+      '<tr><th>หมวด</th><th>ชื่อหมวด</th><th>หน่วย</th><th>จุดงาน</th>' +
+      '<th>รายการ P-1</th><th>รายการ WLMA</th><th>ผลต่าง</th></tr>';
+
+    $('cBody').innerHTML = list.map(function (c) {
+      var d = c.p1 - c.w, ok = Math.abs(d) < WP.EPS;
+      var u = Object.keys(c.units).join(', ') || '—';
+      return '<tr class="clk' + (ok ? '' : ' warn') + '" data-cat="' + esc(c.no) +
+        '" title="คลิกเพื่อดูรายการเบิกและรายการงานในหมวดนี้">' +
+        '<td class="n">' + esc(c.no) + '</td>' +
+        '<td class="nm" title="' + esc(c.name) + '">' + esc(c.name) + '</td>' +
+        '<td>' + esc(u) + '</td>' +
+        '<td class="n job">' + Object.keys(c.jobs).length.toLocaleString() + '</td>' +
+        '<td class="n">' + WP.fmt(c.p1) + '</td>' +
+        '<td class="n">' + WP.fmt(c.w) + '</td>' +
+        '<td class="n dif ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : sign(d)) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    // ไม่รวมยอด "รายการ" ข้ามหมวด เพราะแต่ละหมวดคนละหน่วย (จุด/เมตร/ตร.ม./ลบ.ม./ครั้ง)
+    // รวมได้เฉพาะจุดงาน ซึ่งเป็นหน่วยเดียวกันทุกหมวด
+    $('cFoot').innerHTML = '<tr>' +
+      '<td class="lbl" colspan="3">รวมทุกหมวด (จุดงานไม่ซ้ำ)</td>' +
+      '<td class="n">' + Object.keys(allJobs).length.toLocaleString() + '</td>' +
+      '<td class="n" style="color:var(--muted);font-weight:400">—</td>' +
+      '<td class="n" style="color:var(--muted);font-weight:400">—</td>' +
+      '<td class="n" style="color:var(--muted);font-weight:400">—</td></tr>';
+
+    $('cNote').innerHTML =
+      '<b>จุดงาน</b> = จำนวนหมายเลขงานไม่ซ้ำในระบบ WLMA · <b>รายการ</b> = ผลรวมปริมาณที่เบิก ' +
+      '(หน่วยตามที่ระบุในแต่ละหมวด)<br>' +
+      'แถวพื้นแดง = จำนวนรายการสองฝั่งยังไม่ตรงกัน · ' +
+      'ช่องจุดงานรวมทุกหมวดนับแบบไม่ซ้ำ จึงน้อยกว่าผลบวกรายแถว เพราะงานเดียวมักมีหลายหมวด<br>' +
+      'ช่องรายการไม่มียอดรวมข้ามหมวด เพราะแต่ละหมวดใช้คนละหน่วย (จุด · เมตร · ตร.ม. · ลบ.ม. · ครั้ง)';
+
+    Array.prototype.forEach.call($('cBody').querySelectorAll('tr.clk'), function (tr) {
+      tr.addEventListener('click', function () { openCatDetail(tr.getAttribute('data-cat')); });
+    });
+
+    $('ovl3').classList.add('show');
+  }
+  function closeCat() { $('ovl3').classList.remove('show'); }
+  $('btnCat').addEventListener('click', openCat);
+  $('cClose').addEventListener('click', closeCat);
+  $('cClose2').addEventListener('click', closeCat);
+  $('ovl3').addEventListener('click', function (e) { if (e.target === $('ovl3')) closeCat(); });
+
+  /* ---------- popup ชั้น 3 : รายละเอียดในหมวด ----------
+     แท็บ 1 "รายการเบิก" = เทียบปริมาณ P-1 vs WLMA รายรายการย่อย (BOQ)
+     แท็บ 2 "รายการงาน"  = 1 แถวต่อ 1 หมายเลขงาน พร้อมรายการที่เบิกในงานนั้น (ข้อมูล WLMA เท่านั้น)
+     คลิกรายการในแท็บ 1 → กระโดดไปแท็บ 2 พร้อมกรองเฉพาะงานที่ใช้รายการนั้น */
+  var dState = { no: null, tab: 'item', q: '', itemKey: null, sort: { key: '', dir: 1 } };
+
+  /* ชื่อรายการย่อยแบบสั้น เช่น "3.2.2 / (1) ท่อขนาด ศก. 20-25 มม." */
+  function shortItem(r) {
+    var code = (r.key && r.key[1]) ? r.key[1] : '';
+    var leaf = r.leafText || '';
+    if (!code || leaf.indexOf(code) === 0) return leaf;
+    return code + ' / ' + leaf;
+  }
+
+  function catRowsOf(no) {
+    return state.rows.filter(function (r) {
+      var top = String(r.fullPath || '').split(' / ')[0];
+      var sp = top.indexOf(' ');
+      return ((sp > 0) ? top.slice(0, sp) : top) === String(no);
+    });
+  }
+
+  function jobsOf(rows) {
+    var jobs = {};
+    rows.forEach(function (r) {
+      (r.wDetails || []).forEach(function (d) {
+        if (!d.job) return;
+        if (!jobs[d.job]) jobs[d.job] = { job: d.job, area: d.area, open: d.openDate, close: d.closeDate,
+                                          team: d.team, jobType: d.jobType, items: [], total: 0, keys: {} };
+        var j = jobs[d.job];
+        j.items.push({ label: shortItem(r), qty: d.qty, total: d.total });
+        j.total += n0(d.total);
+        j.keys[r.keyStr] = 1;
+      });
+    });
+    return Object.keys(jobs).map(function (k) { return jobs[k]; });
+  }
+
+  function openCatDetail(no) {
+    dState = { no: no, tab: 'item', q: '', itemKey: null, sort: { key: '', dir: 1 } };
+    $('dSearch').value = '';
+    renderCatDetail();
+    $('ovl4').classList.add('show');
+  }
+  function closeCatDetail() { $('ovl4').classList.remove('show'); }
+
+  function renderCatDetail() {
+    var rows = catRowsOf(dState.no);
+    if (!rows.length) return;
+    var top = String(rows[0].fullPath || '').split(' / ')[0];
+    var sp = top.indexOf(' ');
+    var name = (sp > 0) ? top.slice(sp + 1) : top;
+
+    var jobs = jobsOf(rows);
+    var tp = 0, tw = 0, money = 0;
+    rows.forEach(function (r) { var v = viewOf(r); tp += n0(v.p1Qty); tw += n0(v.wQty); money += n0(v.p1Amount); });
+    var d = tp - tw;
+
+    $('dTitle').textContent = 'หมวด ' + dState.no + ' · ' + name;
+    $('dSum').innerHTML =
+      'จุดงาน <b>' + jobs.length.toLocaleString() + '</b> · ' +
+      'รายการ P-1 <b>' + WP.fmt(tp) + '</b> · WLMA <b>' + WP.fmt(tw) + '</b> · ' +
+      'ผลต่าง <b style="color:' + (Math.abs(d) < WP.EPS ? 'var(--ok-ink)' : 'var(--bad-ink)') + '">' +
+        (Math.abs(d) < WP.EPS ? 'ตรงกัน' : sign(d)) + '</b> · ' +
+      'ยอดเงิน P-1 <b>' + WP.fmt(money) + '</b> บาท';
+
+    $('dTab1').textContent = 'รายการเบิก (' + rows.length + ')';
+    $('dTab2').textContent = 'รายการงาน · job (' + jobs.length + ')';
+    $('dTab1').classList.toggle('on', dState.tab === 'item');
+    $('dTab2').classList.toggle('on', dState.tab === 'job');
+
+    var pill = $('dFilterPill');
+    if (dState.itemKey && dState.tab === 'job') {
+      var src = rows.filter(function (r) { return r.keyStr === dState.itemKey; })[0];
+      pill.textContent = 'เฉพาะงานที่มี: ' + (src ? shortItem(src) : '');
+      pill.classList.remove('hidden');
+    } else pill.classList.add('hidden');
+
+    var q = dState.q.trim().toLowerCase();
+    if (dState.tab === 'item') renderTabItem(rows, q);
+    else renderTabJob(rows, jobs, q);
+  }
+
+  function sortList(list, getters) {
+    var k = dState.sort.key;
+    if (!k || !getters[k]) return list;
+    var dir = dState.sort.dir;
+    return list.slice().sort(function (a, b) {
+      var x = getters[k](a), y = getters[k](b);
+      if (typeof x === 'string' || typeof y === 'string') {
+        return String(x).localeCompare(String(y), 'th') * dir;
+      }
+      return (n0(x) - n0(y)) * dir;
+    });
+  }
+
+  function headHtml(cols) {
+    return '<tr>' + cols.map(function (c) {
+      if (!c[1]) return '<th>' + c[0] + '</th>';   // คอลัมน์ลำดับ — ไม่ให้กดเรียง
+      var act = (dState.sort.key === c[1]);
+      return '<th data-sk="' + c[1] + '" style="cursor:pointer">' + c[0] +
+        ' <span style="font-size:11px;opacity:' + (act ? 1 : .5) + '">' +
+        (act ? (dState.sort.dir === 1 ? '▲' : '▼') : '⇅') + '</span></th>';
+    }).join('') + '</tr>';
+  }
+
+  function bindHead() {
+    Array.prototype.forEach.call($('dHead').querySelectorAll('th[data-sk]'), function (th) {
+      th.addEventListener('click', function () {
+        var k = th.getAttribute('data-sk');
+        if (dState.sort.key === k) dState.sort.dir = -dState.sort.dir;
+        else dState.sort = { key: k, dir: 1 };
+        renderCatDetail();
+      });
+    });
+  }
+
+  function renderTabItem(rows, q) {
+    var list = rows.filter(function (r) {
+      return !q || (shortItem(r) + ' ' + r.fullPath).toLowerCase().indexOf(q) >= 0;
+    });
+    list = sortList(list, {
+      row: function (r) { return n0(r.row); },
+      itm: function (r) { return shortItem(r); },
+      un: function (r) { return r.unit || ''; },
+      pr: function (r) { return n0(r.p1Price); },
+      p1: function (r) { return n0(viewOf(r).p1Qty); },
+      w: function (r) { return n0(viewOf(r).wQty); },
+      df: function (r) { var v = viewOf(r); return n0(v.p1Qty) - n0(v.wQty); },
+      jb: function (r) { var s = {}; (r.wDetails || []).forEach(function (x) { s[x.job] = 1; }); return Object.keys(s).length; }
+    });
+
+    $('dHead').innerHTML = headHtml([['ลำดับ', null], ['แถว P-1', 'row'], ['รายการย่อย', 'itm'], ['หน่วย', 'un'],
+      ['ราคา/หน่วย', 'pr'], ['P-1', 'p1'], ['WLMA', 'w'], ['ผลต่าง', 'df'], ['จุดงาน', 'jb']]);
+
+    $('dBody').innerHTML = list.map(function (r, i) {
+      var v = viewOf(r), df = n0(v.p1Qty) - n0(v.wQty), ok = Math.abs(df) < WP.EPS;
+      var js = {}; (r.wDetails || []).forEach(function (x) { js[x.job] = 1; });
+      return '<tr class="clk' + (ok ? '' : ' warn') + '" data-k="' + esc(r.keyStr) +
+        '" title="คลิกเพื่อดูเฉพาะงานที่เบิกรายการนี้">' +
+        '<td class="n seq">' + (i + 1) + '</td>' +
+        '<td class="n">' + (r.row || '—') + '</td>' +
+        '<td class="itm">' + esc(shortItem(r)) + '</td>' +
+        '<td>' + esc(r.unit || '—') + '</td>' +
+        '<td class="n">' + WP.fmt(r.p1Price) + '</td>' +
+        '<td class="n">' + WP.fmt(v.p1Qty) + '</td>' +
+        '<td class="n">' + WP.fmt(v.wQty) + '</td>' +
+        '<td class="n dif ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : sign(df)) + '</td>' +
+        '<td class="n job">' + Object.keys(js).length + '</td></tr>';
+    }).join('') || '<tr><td class="empty" colspan="9">— ไม่พบรายการที่ค้นหา —</td></tr>';
+
+    bindHead();
+    Array.prototype.forEach.call($('dBody').querySelectorAll('tr.clk'), function (tr) {
+      tr.addEventListener('click', function () {
+        dState.itemKey = tr.getAttribute('data-k');
+        dState.tab = 'job'; dState.q = ''; $('dSearch').value = '';
+        dState.sort = { key: '', dir: 1 };
+        renderCatDetail();
+      });
+    });
+    $('dNote').innerHTML = '<b>แถว P-1</b> = เลขแถวในไฟล์ P-1 ใช้เปิดไฟล์จริงไปตรวจได้ · ' +
+      '<b>จุดงาน</b> = จำนวนหมายเลขงานที่เบิกรายการนี้ · แถวพื้นแดง = ปริมาณสองฝั่งไม่ตรงกัน<br>' +
+      'คลิกที่แถวเพื่อดูเฉพาะงานที่เบิกรายการนั้น';
+  }
+
+  function renderTabJob(rows, jobs, q) {
+    var list = jobs;
+    if (dState.itemKey) list = list.filter(function (j) { return j.keys[dState.itemKey]; });
+    if (q) list = list.filter(function (j) {
+      return (j.job + ' ' + j.area + ' ' + j.team + ' ' + j.jobType + ' ' +
+        j.items.map(function (i) { return i.label; }).join(' ')).toLowerCase().indexOf(q) >= 0;
+    });
+    list = sortList(list, {
+      jb: function (j) { return j.job; }, ar: function (j) { return j.area; },
+      op: function (j) { return j.open; }, cl: function (j) { return j.close; },
+      tm: function (j) { return j.team; }, ty: function (j) { return j.jobType; },
+      ni: function (j) { return j.items.length; }, tt: function (j) { return j.total; }
+    });
+    if (!dState.sort.key) list = list.slice().sort(function (a, b) { return String(a.job).localeCompare(String(b.job)); });
+
+    $('dHead').innerHTML = headHtml([['ลำดับ', null], ['หมายเลขงาน', 'jb'], ['พื้นที่', 'ar'], ['เปิดงาน', 'op'],
+      ['ปิดงาน', 'cl'], ['ทีม', 'tm'], ['ลักษณะงาน', 'ty'], ['รายการที่เบิกในงานนี้', 'ni'], ['รวมเงิน', 'tt']]);
+
+    $('dBody').innerHTML = list.map(function (j, i) {
+      var items = j.items.map(function (i) {
+        return esc(i.label) + ' <span class="qsm">×' + WP.fmt(i.qty) + '</span>';
+      }).join('<br>');
+      return '<tr' + (j.items.length > 1 ? ' class="multi"' : '') + '>' +
+        '<td class="n seq">' + (i + 1) + '</td>' +
+        '<td>' + esc(j.job) + '</td>' +
+        '<td>' + esc(j.area) + '</td>' +
+        '<td>' + esc(j.open) + '</td>' +
+        '<td>' + esc(j.close) + '</td>' +
+        '<td style="text-align:left">' + esc(j.team) + '</td>' +
+        '<td style="text-align:left">' + esc(j.jobType) + '</td>' +
+        '<td class="lines">' + items + '</td>' +
+        '<td class="n">' + WP.fmt(j.total) + '</td></tr>';
+    }).join('') || '<tr><td class="empty" colspan="9">— ไม่พบงานที่ค้นหา —</td></tr>';
+
+    bindHead();
+    var multi = list.filter(function (j) { return j.items.length > 1; }).length;
+    $('dNote').innerHTML = 'แสดง <b>' + list.length.toLocaleString() + '</b> จาก ' + jobs.length.toLocaleString() +
+      ' จุดงาน · <b>แถวพื้นเหลือง = งานที่เบิกมากกว่า 1 รายการในหมวดนี้ (' + multi + ' งาน)</b> ควรตรวจเป็นพิเศษ<br>' +
+      'ข้อมูลแท็บนี้มาจากระบบ WLMA เท่านั้น เพราะเอกสาร P-1 ไม่มีหมายเลขงาน';
+  }
+
+  $('dTab1').addEventListener('click', function () { dState.tab = 'item'; dState.sort = { key: '', dir: 1 }; renderCatDetail(); });
+  $('dTab2').addEventListener('click', function () { dState.tab = 'job'; dState.sort = { key: '', dir: 1 }; renderCatDetail(); });
+  $('dSearch').addEventListener('input', function () { dState.q = $('dSearch').value; renderCatDetail(); });
+  $('dFilterPill').addEventListener('click', function () { dState.itemKey = null; renderCatDetail(); });
+  $('dClose').addEventListener('click', closeCatDetail);
+  $('dClose2').addEventListener('click', closeCatDetail);
+  $('ovl4').addEventListener('click', function (e) { if (e.target === $('ovl4')) closeCatDetail(); });
 
   /* ---------- สรุปการปรับแก้ ---------- */
   function collectChanges() {
