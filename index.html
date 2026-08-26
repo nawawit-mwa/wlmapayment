@@ -117,7 +117,7 @@
   table.pipe td.num{font-variant-numeric:tabular-nums}
   .pipefoot{padding:8px 13px;font-size:13px;color:var(--muted);line-height:1.55}
 
-  /* ---- popup สรุปรายหมวด ---- */
+  /* ---- popup สรุปเทียบจำนวนงาน ---- */
     .catwrap{max-height:60vh;overflow:auto;border:1px solid var(--grid);border-radius:8px}
   table.cat{width:100%;min-width:0;border-collapse:collapse;font-size:14px;table-layout:fixed}
   table.cat th,table.cat td{border:1px solid var(--grid);padding:6px 8px;text-align:center;white-space:nowrap}
@@ -139,7 +139,7 @@
   table.cat tbody tr.clk:hover td{filter:brightness(.96)}
 
   /* ---- popup ชั้น 3 : รายละเอียดในหมวด ----
-     ต้องซ้อนทับ popup ชั้น 2 (สรุปรายหมวด) ที่ยังเปิดค้างอยู่ข้างหลัง */
+     ต้องซ้อนทับ popup ชั้น 2 (สรุปเทียบจำนวนงาน) ที่ยังเปิดค้างอยู่ข้างหลัง */
   #ovl4{z-index:60}
   .tabbar{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
   .tabbar .grow{flex:1}
@@ -270,7 +270,7 @@
       <label style="font-size:15px"><input type="checkbox" id="onlyDiff"> แสดงเฉพาะรายการที่ไม่ตรงกัน</label>
       <span class="tag" id="editCount"></span>
       <span class="grow"></span>
-      <button class="ghost" id="btnCat">สรุปรายหมวด</button>
+      <button class="ghost" id="btnCat">สรุปเทียบจำนวนงาน</button>
       <button class="ghost" id="btnReset">ล้างการแก้ไขทั้งหมด</button>
       <button class="ghost" id="btnSummary" disabled>สรุปแก้ไข</button>
       <button id="btnExport" disabled>บันทึกเป็นไฟล์ P-1</button>
@@ -374,12 +374,12 @@
   </div>
 </div>
 
-<!-- popup สรุปรายหมวด -->
+<!-- popup สรุปเทียบจำนวนงาน -->
 <div class="ovl" id="ovl3">
   <div class="modal modal-cat">
     <div class="mh">
       <div>
-        <h3>สรุปรายหมวด — เทียบจำนวนรายการกับจุดงาน</h3>
+        <h3>สรุปเทียบจำนวนงาน — เทียบจำนวนรายการกับจุดงาน</h3>
         <div class="p" id="cCtx"></div>
       </div>
       <button class="xbtn" id="cClose">ปิด</button>
@@ -1592,7 +1592,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     state.edits = {}; state.editsW = {}; render();
   });
 
-  /* ---------- สรุปรายหมวด ----------
+  /* ---------- สรุปเทียบจำนวนงาน ----------
      รวมทุกรายการตามหมวดระดับบนสุด แล้วเทียบ
        จุดงาน   = จำนวนหมายเลขงาน (job) ไม่ซ้ำในหมวดนั้น (มีเฉพาะฝั่ง WLMA)
        รายการ   = ผลรวมปริมาณที่เบิก (ตามหน่วยของหมวดนั้น) */
