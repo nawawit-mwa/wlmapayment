@@ -1283,8 +1283,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         '<td class="num c-price">' + (r.priceAmbiguous ? r.wPriceList.map(function (p) { return WP.fmt(p); }).join(' / ') : WP.fmt(r.wPrice)) + '</td>' +
         '<td class="num d d-price">' + sign(dPrice) + '</td>' +
         '<td class="c-price"><span class="note ' + pn.cls + '">' + pn.text + '</span></td>' +
-        '<td class="num c-money">' + WP.fmt(mP1) + '</td>' +
-        '<td class="num c-money">' + WP.fmt(mW) + '</td>' +
+        '<td class="num c-money' + (edited ? ' edited' : '') + '">' + moneyCell(r, v, 'p', mP1) + '</td>' +
+        '<td class="num c-money' + (editedW ? ' edited' : '') + '">' + moneyCell(r, v, 'w', mW) + '</td>' +
         '<td class="num d d-money">' + sign(dMoney) + '</td>' +
         '<td class="c-money"><span class="note ' + mn.cls + '">' + mn.text + '</span>' +
           (mn.cause ? '<span class="cause">' + esc(mn.cause) +
@@ -1292,11 +1292,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       tb.appendChild(tr);
 
       // ผูก input / ปุ่ม ของทั้งสองฝั่ง (P-1 = ช่อง side="p", WLMA = side="w")
-      [['p', state.edits, 'p1Qty'], ['w', state.editsW, 'wQty']].forEach(function (cfg) {
-        var side = cfg[0], store = cfg[1], baseField = cfg[2];
+      [['p', 'p1Qty'], ['w', 'wQty']].forEach(function (cfg) {
+        var side = cfg[0], baseField = cfg[1];
+        var store = (side === 'p') ? state.edits : state.editsW;          // ที่เก็บค่าแก้ของฝั่งนี้
+        var otherStore = (side === 'p') ? state.editsW : state.edits;     // อีกฝั่ง (ปลายทางของปุ่ม "ใช้ค่า")
         // ค่าตั้งต้นของช่อง — ถ้าฝั่งนั้นไม่มีข้อมูลเลย ให้ถือเป็น 0
         var base = r[baseField];
         if (base === null || base === undefined) base = 0;
+        var otherBase = (side === 'p') ? r.wQty : r.p1Qty;
+        if (otherBase === null || otherBase === undefined) otherBase = 0;
         var inp = tr.querySelector('input.qty[data-side="' + side + '"]');
         if (inp) {
           inp.addEventListener('click', function (ev) { ev.stopPropagation(); });
@@ -1316,8 +1320,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             render();
           });
         }
-        var ub = tr.querySelector('button.useBtn[data-side="' + side + '"]');
-        if (ub) {
+        // ปุ่มมีได้ทั้งช่องปริมาณและช่องยอดเงิน จึงต้องผูกทุกปุ่มของฝั่งนี้
+        var ubs = tr.querySelectorAll('button.useBtn[data-side="' + side + '"]');
+        Array.prototype.forEach.call(ubs, function (ub) {
           ub.addEventListener('click', function (ev) {
             ev.stopPropagation();
             if (ub.getAttribute('data-act') === 'undo') {   // กดซ้ำ = คืนค่าเดิม เลือกใหม่ได้
@@ -1325,14 +1330,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
               render();
               return;
             }
-            // ฝั่ง P-1 ดึงค่าจาก WLMA ปัจจุบัน / ฝั่ง WLMA ดึงค่าจาก P-1 ปัจจุบัน
-            var target = (side === 'p') ? curWQty(r) : curQty(r);
-            if (target === null || target === undefined) target = 0;
-            if (Math.abs(target - base) < 1e-9) delete store[r.keyStr];
-            else store[r.keyStr] = target;
+            // กดปุ่มฝั่งไหน = ยึดค่าฝั่งนั้นเป็นหลัก แล้วปรับ "อีกฝั่ง" ให้เท่ากัน
+            var val = (side === 'p') ? curQty(r) : curWQty(r);
+            if (val === null || val === undefined) val = 0;
+            if (Math.abs(val - otherBase) < 1e-9) delete otherStore[r.keyStr];
+            else otherStore[r.keyStr] = val;
             render();
           });
-        }
+        });
       });
       tr.addEventListener('click', function () { openDetail(idx); });
     });
@@ -1368,39 +1373,49 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!r.editable) {
       return '<span title="ราคา/หน่วยไม่ตรงกัน จึงแก้ไขไม่ได้">' + WP.fmt(v.p1Qty) + ' 🔒</span>';
     }
-    var target = (v.wQty === null || v.wQty === undefined) ? 0 : v.wQty;
-    var shown = (v.p1Qty === null || v.p1Qty === undefined) ? 0 : v.p1Qty;
-    var diff = Math.abs(shown - target) >= WP.EPS;
-    var base = (r.p1Qty === null || r.p1Qty === undefined) ? 0 : r.p1Qty;
+    var shown = n0(v.p1Qty);
     return '<input class="qty" data-side="p" type="text" value="' + WP.fmt(shown) + '">' +
-      sideBtn('p', state.edits[r.keyStr] !== undefined, diff, base,
-              target === 0 ? 'ปรับเป็น 0' : 'ใช้ค่า WLMA');
-  }
-
-  /* ปุ่มใต้ช่องแก้ไข — ถ้าแก้ไปแล้วจะกลายเป็นปุ่ม "คืนค่าเดิม" เพื่อกดกลับได้ */
-  function sideBtn(side, isEdited, hasDiff, baseVal, useLabel) {
-    if (isEdited) {
-      return '<br><button class="useBtn undo" data-side="' + side + '" data-act="undo">' +
-             'คืนค่าเดิม (' + WP.fmt(baseVal) + ')</button>';
-    }
-    if (hasDiff) {
-      return '<br><button class="useBtn" data-side="' + side + '" data-act="use">' + useLabel + '</button>';
-    }
-    return '';
+      sideBtn('p', 'q', r, v);
   }
 
   function wQtyCell(r, v) {
     if (!wEditable(r)) {
       return '<span title="WLMA มีหลายราคา/หน่วย จึงคำนวณยอดใหม่ไม่ได้">' + WP.fmt(v.wQty) + '</span>';
     }
-    var shown = (v.wQty === null || v.wQty === undefined) ? 0 : v.wQty;
+    var shown = n0(v.wQty);
     var borrowed = (r.wPrice === null || r.wPrice === undefined);
     var tip = borrowed ? ' title="WLMA ไม่มีรายการนี้ — คำนวณยอดโดยใช้ราคา/หน่วยของ P-1"' : '';
-    var p1v = (v.p1Qty === null || v.p1Qty === undefined) ? 0 : v.p1Qty;
-    var diff = Math.abs(shown - p1v) >= WP.EPS;
-    var base = (r.wQty === null || r.wQty === undefined) ? 0 : r.wQty;
     return '<input class="qty" data-side="w" type="text"' + tip + ' value="' + WP.fmt(shown) + '">' +
-      sideBtn('w', state.editsW[r.keyStr] !== undefined, diff, base, 'ใช้ค่า P-1');
+      sideBtn('w', 'q', r, v);
+  }
+
+  /* ช่องยอดเงินของแต่ละฝั่ง — มีปุ่มยึดค่าเหมือนช่องปริมาณ (แก้ผ่านปริมาณให้อัตโนมัติ) */
+  function moneyCell(r, v, side, amt) {
+    var selfOk = (side === 'p') ? r.editable : wEditable(r);
+    if (!selfOk) return WP.fmt(amt);
+    return WP.fmt(amt) + sideBtn(side, 'm', r, v);
+  }
+
+  /* ปุ่มใต้ค่าแต่ละฝั่ง — "กดฝั่งไหน = ยึดค่าฝั่งนั้นเป็นหลัก" แล้วปรับอีกฝั่งให้เท่ากัน
+     ถ้าฝั่งนี้ถูกแก้ไปแล้ว ปุ่มจะกลายเป็น "คืนค่าเดิม" เพื่อกดกลับ/เลือกใหม่ได้ */
+  function sideBtn(side, col, r, v) {
+    var store = (side === 'p') ? state.edits : state.editsW;
+    var name = (side === 'p') ? 'P-1' : 'WLMA';
+    var baseQty = n0((side === 'p') ? r.p1Qty : r.wQty);
+    if (store[r.keyStr] !== undefined) {
+      var price = (side === 'p') ? r.p1Price : effWPrice(r);
+      var baseVal = (col === 'm' && price !== null && price !== undefined) ? baseQty * price : baseQty;
+      return '<br><button class="useBtn undo" data-side="' + side + '" data-act="undo"' +
+             ' title="คืนค่าเดิมของฝั่ง ' + name + ' จากไฟล์">คืนค่าเดิม (' + WP.fmt(baseVal) + ')</button>';
+    }
+    if (!(r.editable && wEditable(r))) return '';
+    var mine = n0((side === 'p') ? v.p1Qty : v.wQty);
+    var theirs = n0((side === 'p') ? v.wQty : v.p1Qty);
+    if (Math.abs(mine - theirs) < WP.EPS) return '';
+    var other = (side === 'p') ? 'WLMA' : 'P-1';
+    var label = (mine === 0) ? 'ปรับเป็น 0' : ('ใช้ค่า ' + name);
+    return '<br><button class="useBtn" data-side="' + side + '" data-act="use"' +
+           ' title="ยึดค่าฝั่ง ' + name + ' เป็นหลัก — ปรับฝั่ง ' + other + ' ให้เท่ากัน">' + label + '</button>';
   }
 
   function sign(v) {
