@@ -121,7 +121,7 @@
   table.pipe td.num{font-variant-numeric:tabular-nums}
   .pipefoot{padding:8px 13px;font-size:13px;color:var(--muted);line-height:1.55}
 
-  /* ---- popup สรุปเทียบจำนวนงาน ---- */
+  /* ---- popup ตรวจสอบเทียบจำนวนงาน ---- */
     .catwrap{max-height:60vh;overflow:auto;border:1px solid var(--grid);border-radius:8px}
   table.cat{width:100%;min-width:0;border-collapse:collapse;font-size:14px;table-layout:fixed}
   table.cat th,table.cat td{border:1px solid var(--grid);padding:6px 8px;text-align:center;white-space:nowrap}
@@ -143,7 +143,7 @@
   table.cat tbody tr.clk:hover td{filter:brightness(.96)}
 
   /* ---- popup ชั้น 3 : รายละเอียดในหมวด ----
-     ต้องซ้อนทับ popup ชั้น 2 (สรุปเทียบจำนวนงาน) ที่ยังเปิดค้างอยู่ข้างหลัง */
+     ต้องซ้อนทับ popup ชั้น 2 (ตรวจสอบเทียบจำนวนงาน) ที่ยังเปิดค้างอยู่ข้างหลัง */
   #ovl4{z-index:60}
   .tabbar{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
   .tabbar .grow{flex:1}
@@ -272,11 +272,18 @@
     <h2>3 · ตารางเปรียบเทียบรายไอเท็ม</h2>
     <div class="toolbar">
       <label style="font-size:15px"><input type="checkbox" id="onlyDiff"> แสดงเฉพาะรายการที่ไม่ตรงกัน</label>
+      <!-- ═══ ตั้งค่าในโค้ด: "ยึด WLMA เป็นค่าที่ถูกต้อง" (ซ่อนจากหน้าจอ ไม่ให้ผู้ใช้แก้) ═══
+           มี  checked  = โหมดปกติ: แก้ได้เฉพาะฝั่ง P-1 · ซ่อนปุ่ม "ใช้ค่า P-1"
+                          และข้อความทั้งหมดที่เกี่ยวกับการปรับฝั่ง WLMA
+           ไม่มี checked = เปิดให้แก้ได้ทั้งสองฝั่ง (P-1 และ WLMA)
+           วิธีเปลี่ยน: ลบหรือใส่คำว่า checked ในบรรทัดถัดไป แล้วบันทึกไฟล์ -->
+      <input type="checkbox" id="wlmaTrust" checked hidden>
       <span class="tag" id="editCount"></span>
       <span class="grow"></span>
-      <button class="ghost" id="btnCat">สรุปเทียบจำนวนงาน</button>
+      <button class="ghost" id="btnUseAll" disabled>ใช้ค่า WLMA ทั้งหมด</button>
       <button class="ghost" id="btnReset">ล้างการแก้ไขทั้งหมด</button>
-      <button class="ghost" id="btnSummary" disabled>สรุปแก้ไข</button>
+      <button class="ghost" id="btnCat">ตรวจสอบเทียบจำนวนงาน</button>
+      <button class="ghost" id="btnSummary" disabled>สรุปการแก้ไข</button>
       <button id="btnExport" disabled>บันทึกเป็นไฟล์ P-1</button>
     </div>
     <div class="hintrow"><span class="hint" id="exportHint"></span></div>
@@ -378,12 +385,12 @@
   </div>
 </div>
 
-<!-- popup สรุปเทียบจำนวนงาน -->
+<!-- popup ตรวจสอบเทียบจำนวนงาน -->
 <div class="ovl" id="ovl3">
   <div class="modal modal-cat">
     <div class="mh">
       <div>
-        <h3>สรุปเทียบจำนวนงาน — เทียบจำนวนรายการกับจุดงาน</h3>
+        <h3>ตรวจสอบเทียบจำนวนงาน — เทียบจำนวนรายการกับจุดงาน</h3>
         <div class="p" id="cCtx"></div>
       </div>
       <button class="xbtn" id="cClose">ปิด</button>
@@ -395,7 +402,10 @@
         <thead id="cHead"></thead><tbody id="cBody"></tbody><tfoot id="cFoot"></tfoot></table></div>
       <div class="pipefoot" id="cNote"></div>
     </div>
-    <div class="mf"><button class="ghost" id="cClose2">ปิด</button></div>
+    <div class="mf">
+      <button class="ghost" id="cClose2">ปิด</button>
+      <button id="cSave">บันทึกเป็นไฟล์ Excel</button>
+    </div>
   </div>
 </div>
 
@@ -413,8 +423,10 @@
       <div class="kv" id="sKv"></div>
       <h4 class="sh">การปรับแก้ฝั่ง P-1 (เอกสารเบิกจ่ายเงิน)</h4>
       <div class="detwrap"><table class="det"><thead id="sP1Head"></thead><tbody id="sP1Body"></tbody></table></div>
-      <h4 class="sh">การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA)</h4>
-      <div class="detwrap"><table class="det"><thead id="sWHead"></thead><tbody id="sWBody"></tbody></table></div>
+      <div id="secW">
+        <h4 class="sh">การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA)</h4>
+        <div class="detwrap"><table class="det"><thead id="sWHead"></thead><tbody id="sWBody"></tbody></table></div>
+      </div>
     </div>
     <div class="mf">
       <button class="ghost" id="sClose2">ปิด</button>
@@ -1108,6 +1120,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* แก้ไขฝั่ง WLMA ได้เมื่อมีราคา/หน่วยที่ใช้คำนวณยอดใหม่ได้ (รวมกรณีปริมาณเป็น 0 / ไม่มีข้อมูล) */
   function wEditable(r) { return !r.priceAmbiguous && effWPrice(r) !== null; }
 
+  /* โหมด "ยึด WLMA เป็นค่าที่ถูกต้อง" — ซ่อนปุ่ม/ช่องกรอก/ข้อความทั้งหมดที่เกี่ยวกับการใช้ค่า P-1
+     ไปทับฝั่ง WLMA (แก้ได้เฉพาะฝั่ง P-1 เท่านั้น) */
+  function trustW() { var c = $('wlmaTrust'); return !c || c.checked; }
+
   /* ---------- การเรียงลำดับ (กดที่หัวตาราง) ---------- */
   var QRANK = { 'ตรงกัน': 0, 'ไม่ตรงกัน': 1, 'ไม่ได้เบิกใน P-1': 2, 'ไม่พบใน WLMA': 3 };
 
@@ -1240,12 +1256,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function render() {
     var tb = $('tbody'); tb.innerHTML = '';
     var onlyDiff = $('onlyDiff').checked;
-    var n = 0, blockers = 0;
+    var n = 0, blockers = 0, fixable = 0;
 
     // เตรียมรายการพร้อมค่าที่ใช้เรียง (เก็บ index เดิมไว้ให้ popup อ้างอิงถูกแถว)
     var list = state.rows.map(function (r, idx) {
       var v = viewOf(r);
-      if (!v.moneyOk) blockers++;
+      if (!v.moneyOk) { blockers++; if (r.editable) fixable++; }
       return { r: r, v: v, idx: idx, sv: sortValue(state.sort.key, r, v, idx) };
     });
     var dir = state.sort.dir;
@@ -1352,21 +1368,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     renderSummary();
     var ec = Object.keys(state.edits).length, ew = Object.keys(state.editsW).length;
     var parts = [];
-    if (ec) parts.push('P-1 ' + ec + ' รายการ');
-    if (ew) parts.push('WLMA ' + ew + ' รายการ');
+    if (ec) parts.push((trustW() ? '' : 'P-1 ') + ec + ' รายการ');
+    if (ew && !trustW()) parts.push('WLMA ' + ew + ' รายการ');
     $('editCount').textContent = parts.length ? ('แก้ไขแล้ว: ' + parts.join(' · ')) : '';
 
-    // ปุ่มบันทึก / สรุปแก้ไข เปิดใช้ได้เมื่อยอดเงินตรงกันครบทุกรายการ
+    var ua = $('btnUseAll');
+    ua.disabled = !fixable;
+    ua.title = fixable
+      ? ('ปรับปริมาณฝั่ง P-1 ให้เท่ากับ WLMA รวดเดียว ' + fixable + ' รายการที่ยอดเงินยังไม่ตรง')
+      : 'ไม่มีรายการที่ต้องปรับ';
+
+    // ปุ่มบันทึก / สรุปการแก้ไข เปิดใช้ได้เมื่อยอดเงินตรงกันครบทุกรายการ
     var hint = $('exportHint');
     $('btnExport').disabled = blockers > 0;
     $('btnSummary').disabled = blockers > 0;
     if (blockers > 0) {
       hint.className = 'hint';
       hint.textContent = 'ยังมี ' + blockers + ' รายการที่ยอดเงินไม่ตรง — ' +
-        'แก้ให้ตรงก่อน สามารถตรวจสอบ สรุปแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
+        'แก้ให้ตรงก่อน สามารถตรวจสอบ สรุปการแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
     } else {
       hint.className = 'hint ready';
-      hint.textContent = '✓ ยอดเงินตรงกันครบทุกรายการ — สรุปแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
+      hint.textContent = '✓ ยอดเงินตรงกันครบทุกรายการ — สรุปการแก้ไข หรือ บันทึกไฟล์ P-1 ได้';
     }
 
     $('ctxLine').innerHTML = 'ไฟล์ WLMA: <b>' + esc(state.wlmaName) + '</b> · ไฟล์ P-1: <b>' + esc(state.p1Name) +
@@ -1383,6 +1405,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function wQtyCell(r, v) {
+    if (trustW()) {   // ยึด WLMA เป็นค่าที่ถูกต้อง — ค่าฝั่งนี้แก้ไม่ได้ แต่ยังกด "ใช้ค่า WLMA" ได้
+      return '<span title="ยึด WLMA เป็นค่าที่ถูกต้อง จึงแก้ไม่ได้ — ปลดติ๊กด้านบนถ้าต้องการแก้">' +
+             WP.fmt(n0(v.wQty)) + '</span>' + sideBtn('w', 'q', r, v);
+    }
     if (!wEditable(r)) {
       return '<span title="WLMA มีหลายราคา/หน่วย จึงคำนวณยอดใหม่ไม่ได้">' + WP.fmt(v.wQty) + '</span>';
     }
@@ -1395,6 +1421,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ช่องยอดเงินของแต่ละฝั่ง — มีปุ่มยึดค่าเหมือนช่องปริมาณ (แก้ผ่านปริมาณให้อัตโนมัติ) */
   function moneyCell(r, v, side, amt) {
+    if (side === 'w' && trustW()) return WP.fmt(amt) + sideBtn('w', 'm', r, v);
     var selfOk = (side === 'p') ? r.editable : wEditable(r);
     if (!selfOk) return WP.fmt(amt);
     return WP.fmt(amt) + sideBtn(side, 'm', r, v);
@@ -1412,6 +1439,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return '<br><button class="useBtn undo" data-side="' + side + '" data-act="undo"' +
              ' title="คืนค่าเดิมของฝั่ง ' + name + ' จากไฟล์">คืนค่าเดิม (' + WP.fmt(baseVal) + ')</button>';
     }
+    if (side === 'p' && trustW()) return '';   // ซ่อนปุ่ม "ใช้ค่า P-1" เมื่อยึด WLMA เป็นหลัก
     if (!(r.editable && wEditable(r))) return '';
     var mine = n0((side === 'p') ? v.p1Qty : v.wQty);
     var theirs = n0((side === 'p') ? v.wQty : v.p1Qty);
@@ -1520,7 +1548,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('pipeBox').innerHTML =
       '<h3>จำนวนจุดงานซ่อมท่อ — แยกตามขนาดท่อ</h3>' +
       '<table class="pipe"><thead><tr>' +
-        '<th>ประเภทท่อ</th><th>รายการ (P-1)</th><th>รายการ (WLMA)</th><th>ผลต่าง</th><th>จุดงาน (WLMA)</th>' +
+        '<th>ประเภทท่อ</th><th>รายการ (P-1)</th><th>รายการ (WLMA)</th><th>ผลต่าง</th><th>จำนวนจุดงาน (WLMA)</th>' +
       '</tr></thead><tbody>' +
         row('ท่อบริการ — ศก. ≤ 50 มม.', G.svc, nSvc) +
         row('ท่อจ่ายน้ำ — ศก. ≥ 100 มม.', G.dist, nDist) +
@@ -1613,13 +1641,33 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
 
   $('onlyDiff').addEventListener('change', render);
+  // สลับโหมด "ยึด WLMA เป็นค่าที่ถูกต้อง" — เข้าโหมดนี้ต้องล้างการแก้ฝั่ง WLMA ที่ค้างอยู่ทิ้ง
+  $('wlmaTrust').addEventListener('change', function () {
+    if (trustW()) state.editsW = {};
+    render();
+  });
+  /* ใช้ค่า WLMA ทั้งหมด — ปรับปริมาณฝั่ง P-1 ให้เท่ากับ WLMA ทุกรายการที่ยอดเงินยังไม่ตรง */
+  $('btnUseAll').addEventListener('click', function () {
+    var targets = state.rows.filter(function (r) { return r.editable && !viewOf(r).moneyOk; });
+    if (!targets.length) return;
+    if (!confirm('ปรับปริมาณฝั่ง P-1 ให้เท่ากับ WLMA ทั้งหมด ' + targets.length +
+                 ' รายการ?\n(ย้อนกลับได้ด้วยปุ่ม "คืนค่าเดิม" รายแถว หรือ "ล้างการแก้ไขทั้งหมด")')) return;
+    targets.forEach(function (r) {
+      var t = curWQty(r);
+      if (t === null || t === undefined) t = 0;
+      if (Math.abs(t - n0(r.p1Qty)) < 1e-9) delete state.edits[r.keyStr];
+      else state.edits[r.keyStr] = t;
+    });
+    render();
+  });
+
   $('btnReset').addEventListener('click', function () {
     if (!Object.keys(state.edits).length && !Object.keys(state.editsW).length) return;
     if (!confirm('ล้างการแก้ไขทั้งหมด (ทั้งฝั่ง P-1 และ WLMA) กลับเป็นค่าเดิมจากไฟล์?')) return;
     state.edits = {}; state.editsW = {}; render();
   });
 
-  /* ---------- สรุปเทียบจำนวนงาน ----------
+  /* ---------- ตรวจสอบเทียบจำนวนงาน ----------
      รวมทุกรายการตามหมวดระดับบนสุด แล้วเทียบ
        จุดงาน   = จำนวนหมายเลขงาน (job) ไม่ซ้ำในหมวดนั้น (มีเฉพาะฝั่ง WLMA)
        รายการ   = ผลรวมปริมาณที่เบิก (ตามหน่วยของหมวดนั้น) */
@@ -1976,14 +2024,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('sCtx').innerHTML = 'ไฟล์ WLMA: <b>' + esc(state.wlmaName) + '</b> · ไฟล์ P-1: <b>' + esc(state.p1Name) +
       '</b> · สัญญา: <b>' + esc(state.ctx.contract || '—') + '</b> · โซน: <b>' + esc(state.ctx.zone) + '</b>';
 
-    $('sKv').innerHTML = [
+    var kvs = [
       ['รายการที่ตรวจทั้งหมด', state.rows.length.toLocaleString() + ' รายการ'],
       ['ปรับแก้ฝั่ง P-1', ch.p1.length.toLocaleString() + ' รายการ'],
-      ['ปรับแก้ฝั่ง WLMA', ch.wl.length.toLocaleString() + ' รายการ'],
-      ['ผลรวมที่เปลี่ยนฝั่ง P-1', WP.fmt(sumP1) + ' บาท'],
-      ['ผลรวมที่เปลี่ยนฝั่ง WLMA', WP.fmt(sumW) + ' บาท'],
-      ['ยอดเบิกรวมหลังปรับแก้', WP.fmt(grandP1) + ' บาท']
-    ].map(function (kv) {
+      ['ผลรวมที่เปลี่ยนฝั่ง P-1', WP.fmt(sumP1) + ' บาท']
+    ];
+    if (!trustW()) {
+      kvs.splice(2, 0, ['ปรับแก้ฝั่ง WLMA', ch.wl.length.toLocaleString() + ' รายการ']);
+      kvs.push(['ผลรวมที่เปลี่ยนฝั่ง WLMA', WP.fmt(sumW) + ' บาท']);
+    }
+    kvs.push(['ยอดเบิกรวมหลังปรับแก้', WP.fmt(grandP1) + ' บาท']);
+    $('secW').style.display = trustW() ? 'none' : '';
+    $('sKv').innerHTML = kvs.map(function (kv) {
       return '<div class="b"><div class="k">' + esc(kv[0]) + '</div><div class="v">' + esc(kv[1]) + '</div></div>';
     }).join('');
 
@@ -1998,28 +2050,54 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('sClose2').addEventListener('click', closeSummary);
   $('ovl2').addEventListener('click', function (e) { if (e.target === $('ovl2')) closeSummary(); });
 
-  /* ---------- บันทึกสรุปเป็นไฟล์ Excel ---------- */
-  $('sSave').addEventListener('click', function () {
-    var ch = collectChanges();
-    var wb = new ExcelJS.Workbook();
-    var ws = wb.addWorksheet('สรุปการปรับแก้');
-    var FONT = { name: 'TH SarabunPSK', size: 14 };
-    var HFILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A86C5' } };
+  /* ---------- ตัวช่วยเขียนไฟล์ Excel (ใช้ร่วมกันทุกปุ่มบันทึก) ---------- */
+  var XL_FONT = { name: 'TH SarabunPSK', size: 14 };
+  var XL_HFILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A86C5' } };
 
-    function put(row, vals, opt) {
+  function xlPut(ws) {
+    return function (row, vals, opt) {
       opt = opt || {};
       vals.forEach(function (v, i) {
         var c = ws.getCell(row, i + 1);
         // ปัดเศษทศนิยมลอยตัว (เช่น 13.299999999999999) ให้เป็นค่าที่สะอาด
         if (typeof v === 'number' && isFinite(v)) v = Math.round(v * 100) / 100;
         c.value = v;
-        c.font = Object.assign({}, FONT, opt.bold ? { bold: true } : {}, opt.head ? { bold: true, color: { argb: 'FFFFFFFF' } } : {});
-        if (opt.head) c.fill = HFILL;
+        c.font = Object.assign({}, XL_FONT, opt.bold ? { bold: true } : {}, opt.head ? { bold: true, color: { argb: 'FFFFFFFF' } } : {});
+        if (opt.head) c.fill = XL_HFILL;
         if (typeof v === 'number') { c.numFmt = '#,##0.##'; c.alignment = { horizontal: 'center' }; }
         if (opt.head) c.alignment = { horizontal: 'center', wrapText: true };
+        if (opt.wrap) c.alignment = { vertical: 'top', wrapText: true };
       });
       return row + 1;
-    }
+    };
+  }
+
+  function xlWidths(ws, widths) {
+    ws.columns.forEach(function (col, i) { col.width = widths[i] || widths[widths.length - 1] || 15; });
+  }
+
+  function xlSave(wb, name, okMsg, after) {
+    return wb.xlsx.writeBuffer().then(function (buf) {
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      if (after) after();
+      say('okm', okMsg + ' — ชื่อไฟล์: <b>' + esc(name) + '</b>');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }).catch(function (err) {
+      say('err', 'บันทึกไฟล์ไม่สำเร็จ: ' + err.message);
+    });
+  }
+
+  /* ---------- บันทึกสรุปเป็นไฟล์ Excel ---------- */
+  $('sSave').addEventListener('click', function () {
+    var ch = collectChanges();
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet('สรุปการปรับแก้');
+    var put = xlPut(ws);
 
     var r = 1;
     r = put(r, ['สรุปการปรับแก้การเบิกค่าแรง — WLMA Payment Checking'], { bold: true });
@@ -2041,35 +2119,95 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                   c.oldQty, c.newQty, c.newQty - c.oldQty, c.price,
                   c.oldAmt, c.newAmt, (c.newAmt || 0) - (c.oldAmt || 0)]);
     });
+    // โหมดยึด WLMA เป็นค่าที่ถูกต้อง = ไม่มีการปรับฝั่ง WLMA จึงไม่ต้องมีส่วนนี้ในไฟล์สรุป
+    if (!trustW()) {
+      r++;
+      var heads2 = ['รายการ', 'หมวดหมู่', 'หน่วย', 'จำนวนบรรทัดใน WLMA', 'ปริมาณเดิม', 'ปริมาณใหม่',
+                    'ส่วนต่างปริมาณ', 'ราคา/หน่วย', 'ยอดเงินเดิม', 'ยอดเงินใหม่', 'ส่วนต่างยอดเงิน'];
+      r = put(r, ['การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA) — ' + ch.wl.length + ' รายการ'], { bold: true });
+      r = put(r, heads2, { head: true });
+      if (!ch.wl.length) r = put(r, ['— ไม่มีการปรับแก้ —']);
+      ch.wl.forEach(function (c) {
+        r = put(r, [c.leaf, String(c.path).split(' / ')[0], c.unit, c.jobs,
+                    c.oldQty, c.newQty, c.newQty - c.oldQty, c.price,
+                    c.oldAmt, c.newAmt, (c.newAmt || 0) - (c.oldAmt || 0)]);
+      });
+    }
+
+    xlWidths(ws, [46, 30, 15]);
+    xlSave(wb, outName(state.p1Name).replace('_checked_', '_summary_'), 'บันทึกไฟล์สรุปแล้ว', closeSummary);
+  });
+
+  /* ---------- บันทึก "ตรวจสอบเทียบจำนวนงาน" เป็นไฟล์ Excel (3 ชีต) ---------- */
+  $('cSave').addEventListener('click', function () {
+    var list = catStats();
+    var wb = new ExcelJS.Workbook();
+    var ctx = [
+      ['ไฟล์ WLMA', state.wlmaName],
+      ['ไฟล์ P-1', state.p1Name],
+      ['เลขที่สัญญา', state.ctx.contract || '—'],
+      ['โซน', state.ctx.zone],
+      ['วันที่จัดทำ', new Date().toLocaleString('th-TH')]
+    ];
+
+    /* ชีต 1 — สรุปรายหมวด (ตรงกับตารางในหน้าจอ) */
+    var ws1 = wb.addWorksheet('เทียบจำนวนงานรายหมวด');
+    var p1 = xlPut(ws1), r = 1, allJobs = {};
+    r = p1(r, ['ตรวจสอบเทียบจำนวนงาน — เทียบจำนวนรายการกับจุดงาน'], { bold: true });
+    ctx.forEach(function (kv) { r = p1(r, kv); });
     r++;
-
-    var heads2 = ['รายการ', 'หมวดหมู่', 'หน่วย', 'จำนวนบรรทัดใน WLMA', 'ปริมาณเดิม', 'ปริมาณใหม่',
-                  'ส่วนต่างปริมาณ', 'ราคา/หน่วย', 'ยอดเงินเดิม', 'ยอดเงินใหม่', 'ส่วนต่างยอดเงิน'];
-    r = put(r, ['การปรับแก้ฝั่ง WLMA (ต้องไปแก้ในระบบ WLMA) — ' + ch.wl.length + ' รายการ'], { bold: true });
-    r = put(r, heads2, { head: true });
-    if (!ch.wl.length) r = put(r, ['— ไม่มีการปรับแก้ —']);
-    ch.wl.forEach(function (c) {
-      r = put(r, [c.leaf, String(c.path).split(' / ')[0], c.unit, c.jobs,
-                  c.oldQty, c.newQty, c.newQty - c.oldQty, c.price,
-                  c.oldAmt, c.newAmt, (c.newAmt || 0) - (c.oldAmt || 0)]);
+    r = p1(r, ['หมวด', 'ชื่อหมวด', 'หน่วย', 'จุดงาน', 'รายการ P-1', 'รายการ WLMA', 'ผลต่าง'], { head: true });
+    list.forEach(function (c) {
+      Object.keys(c.jobs).forEach(function (j) { allJobs[j] = 1; });
+      r = p1(r, [c.no, c.name, Object.keys(c.units).join(', ') || '—',
+                 Object.keys(c.jobs).length, c.p1, c.w, c.p1 - c.w]);
     });
+    r = p1(r, ['รวมทุกหมวด (จุดงานไม่ซ้ำ)', '', '', Object.keys(allJobs).length, '—', '—', '—'], { bold: true });
+    r++;
+    r = p1(r, ['หมายเหตุ — จุดงาน = จำนวนหมายเลขงานไม่ซ้ำในระบบ WLMA · รายการ = ผลรวมปริมาณที่เบิก (หน่วยตามแต่ละหมวด)']);
+    r = p1(r, ['จุดงานรวมทุกหมวดนับแบบไม่ซ้ำ จึงน้อยกว่าผลบวกรายแถว เพราะงานเดียวมักเบิกหลายหมวด']);
+    r = p1(r, ['ช่องรายการไม่มียอดรวมข้ามหมวด เพราะแต่ละหมวดใช้คนละหน่วย (จุด · เมตร · ตร.ม. · ลบ.ม. · ครั้ง)']);
+    xlWidths(ws1, [10, 52, 14, 12, 14, 14, 12]);
 
-    ws.columns.forEach(function (col, i) { col.width = (i === 0) ? 46 : (i === 1 ? 30 : 15); });
-
-    var name = outName(state.p1Name).replace('_checked_', '_summary_');
-    wb.xlsx.writeBuffer().then(function (buf) {
-      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-      closeSummary();
-      say('okm', 'บันทึกไฟล์สรุปแล้ว — ชื่อไฟล์: <b>' + esc(name) + '</b>');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }).catch(function (err) {
-      say('err', 'บันทึกไฟล์สรุปไม่สำเร็จ: ' + err.message);
+    /* ชีต 2 — รายการย่อยทุกหมวด */
+    var ws2 = wb.addWorksheet('รายการย่อยรายหมวด');
+    var p2 = xlPut(ws2), r2 = 1;
+    r2 = p2(r2, ['รายการย่อยแยกตามหมวด'], { bold: true });
+    r2++;
+    r2 = p2(r2, ['หมวด', 'ชื่อหมวด', 'แถวใน P-1', 'รายการย่อย', 'หน่วย', 'ราคา/หน่วย',
+                 'ปริมาณ P-1', 'ปริมาณ WLMA', 'ผลต่าง', 'จุดงาน'], { head: true });
+    list.forEach(function (c) {
+      catRowsOf(c.no).forEach(function (row) {
+        var v = viewOf(row), js = {};
+        (row.wDetails || []).forEach(function (d) { if (d.job) js[d.job] = 1; });
+        r2 = p2(r2, [c.no, c.name, row.row === null ? '—' : row.row, shortItem(row), row.unit || '—',
+                     row.p1Price, n0(v.p1Qty), n0(v.wQty), n0(v.p1Qty) - n0(v.wQty),
+                     Object.keys(js).length]);
+      });
     });
+    xlWidths(ws2, [10, 34, 12, 46, 12, 13, 13, 13, 12, 11]);
+
+    /* ชีต 3 — จุดงานทุกหมวด */
+    var ws3 = wb.addWorksheet('จุดงาน');
+    var p3 = xlPut(ws3), r3 = 1;
+    r3 = p3(r3, ['รายการจุดงานแยกตามหมวด (ข้อมูลจากระบบ WLMA)'], { bold: true });
+    r3++;
+    r3 = p3(r3, ['หมวด', 'ชื่อหมวด', 'หมายเลขงาน', 'พื้นที่', 'เปิดงาน', 'ปิดงาน', 'ทีม',
+                 'ลักษณะงาน', 'จำนวนรายการที่เบิก', 'รายการที่เบิกในงานนี้', 'รวมเงิน'], { head: true });
+    list.forEach(function (c) {
+      var jobs = jobsOf(catRowsOf(c.no));
+      jobs.sort(function (a, b) { return String(a.job).localeCompare(String(b.job)); });
+      jobs.forEach(function (j) {
+        var txt = j.items.map(function (it) { return it.label + ' ×' + WP.fmt(it.qty); }).join('\n');
+        r3 = p3(r3, [c.no, c.name, j.job, j.area, j.open, j.close, j.team, j.jobType,
+                     j.items.length, txt, j.total]);
+      });
+    });
+    xlWidths(ws3, [10, 34, 18, 14, 14, 14, 16, 26, 12, 52, 14]);
+    ws3.getColumn(10).alignment = { vertical: 'top', wrapText: true };
+
+    xlSave(wb, outName(state.p1Name).replace('_checked_', '_jobcount_'),
+           'บันทึกไฟล์ตรวจสอบเทียบจำนวนงานแล้ว', closeCat);
   });
 
   /* ---------- export ---------- */
