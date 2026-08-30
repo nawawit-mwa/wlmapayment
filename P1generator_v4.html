@@ -171,7 +171,7 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
     </div>
 
     <div style="margin-top:16px">
-      <label class="fld">งวดงาน — ตามวันที่ปิดงานภาคสนาม</label>
+      <label class="fld">งวดงาน — ตามวันที่ปฏิบัติงานแล้วเสร็จ</label>
       <div class="seg">
         <button id="btnModeMonth" class="on">เลือกเป็นเดือน</button>
         <button id="btnModeRange">กำหนดช่วงวันที่</button>
@@ -526,7 +526,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     opts = opts || {};
     var contract = opts.contract || null;
 
-    // งวดงานกำหนดด้วย "วันที่ปฏิบัติงานแล้วเสร็จ" (วันที่ปิดงานภาคสนาม)
+    // งวดงานกำหนดด้วยคอลัมน์ "วันที่ปฏิบัติงานแล้วเสร็จ" ของ LR010
     var periodFrom = opts.periodFrom === undefined ? null : opts.periodFrom;  // yyyymmdd (พ.ศ.)
     var periodTo = opts.periodTo === undefined ? null : opts.periodTo;
     // เลือกเป็นเดือน (หลายเดือนได้) — ถ้ามีค่า จะใช้แทนช่วงวันที่
@@ -590,7 +590,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     var groups = {}, unmatched = [], noZone = [], jobs = {}, minD = null, maxD = null;
     used.forEach(function (rec) {
-      // หัวเอกสารใช้ช่วงเวลาปฏิบัติงานภาคสนามจริง (เริ่มปฏิบัติงาน .. ปฏิบัติงานแล้วเสร็จ)
+      // หัวเอกสารใช้ช่วงเวลาปฏิบัติงานจริง (เริ่มปฏิบัติงาน .. ปฏิบัติงานแล้วเสร็จ)
       var ds = dateSortable(rec.fieldStart) || dateSortable(rec.openDate);
       var de = dateSortable(rec.fieldEnd) || dateSortable(rec.fieldStart) || dateSortable(rec.openDate);
       if (ds !== null && (minD === null || ds < minD)) minD = ds;
@@ -941,19 +941,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       { note: plan.contractMatched === false ? 'ไม่ตรงกับแม่แบบ — ผู้ใช้เลือกเอง' : '' });
     kv('วันที่เริ่มต้น', header.dateFrom);
     kv('วันที่สิ้นสุด', header.dateTo);
-    kv('งวดงาน (วันที่ปิดงานภาคสนาม)', periodLabel(plan), { bold: true });
+    kv('งวดงาน (วันที่ปฏิบัติงานแล้วเสร็จ)', periodLabel(plan), { bold: true });
     kv('โซนที่พบข้อมูลใน LR010', plan.zones.length ? plan.zones.join(', ') : '—');
     kv('จำนวนงาน (job) ที่นับได้', plan.jobCount);
     kv('รายการ LR010 ที่ใช้ (ปิดงาน + ค่างาน + อยู่ในงวด)', plan.usedRows,
       { note: 'จากทั้งหมด ' + plan.totalRows + ' รายการ' });
-    kv('ตัดออก: ปิดงานภาคสนามนอกงวด', plan.excluded.outOfRange.rows + ' รายการ / ' +
+    kv('ตัดออก: ปฏิบัติงานแล้วเสร็จนอกงวด', plan.excluded.outOfRange.rows + ' รายการ / ' +
       plan.excluded.outOfRange.jobs + ' job', { note: 'ยอด ' + plan.excluded.outOfRange.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท' });
     if (plan.excluded.noDate.rows) {
-      kv('ตัดออก: ไม่มีวันที่ปิดงานภาคสนาม', plan.excluded.noDate.rows + ' รายการ / ' +
+      kv('ตัดออก: ไม่มีวันที่ปฏิบัติงานแล้วเสร็จ', plan.excluded.noDate.rows + ' รายการ / ' +
         plan.excluded.noDate.jobs + ' job', { note: 'ยอด ' + plan.excluded.noDate.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท', fill: 'FFFFF6D6' });
     }
     if (plan.jobCloseConflict.length) {
-      kv('เตือน: job ที่มีวันที่ปิดงานภาคสนามหลายค่า', plan.jobCloseConflict.length + ' job',
+      kv('เตือน: job ที่มีวันที่ปฏิบัติงานแล้วเสร็จหลายค่า', plan.jobCloseConflict.length + ' job',
         { fill: 'FFFFF6D6', note: plan.jobCloseConflict.slice(0, 5).map(function (x) { return x.job; }).join(', ') });
     }
     blank();
@@ -1236,7 +1236,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     contractChanged();
   }
 
-  /* ---------- งวดงาน (วันที่ปิดงานภาคสนาม) ---------- */
+  /* ---------- งวดงาน (วันที่ปฏิบัติงานแล้วเสร็จ) ---------- */
   state.mode = 'month';        // 'month' = เลือกเป็นเดือน · 'range' = กำหนดช่วงวันที่
   state.months = [];           // ym ที่เลือกอยู่
 
@@ -1260,7 +1260,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var box = $('chipMonths');
     box.innerHTML = '';
     if (!probe.months.length) {
-      box.innerHTML = '<span class="hint">ไม่พบวันที่ปิดงานภาคสนามในไฟล์</span>';
+      box.innerHTML = '<span class="hint">ไม่พบวันที่ปฏิบัติงานแล้วเสร็จในไฟล์</span>';
     } else {
       var all = document.createElement('span');
       all.className = 'chip all on';
@@ -1290,7 +1290,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('inPTo').value = probe.periodAvail ? L.fmtDate(probe.periodAvail.max) : '';
     $('hintPeriod').textContent = probe.periodAvail
       ? 'ในไฟล์มีตั้งแต่ ' + L.fmtDate(probe.periodAvail.min) + ' ถึง ' + L.fmtDate(probe.periodAvail.max)
-      : 'ไม่พบวันที่ปิดงานภาคสนามในไฟล์';
+      : 'ไม่พบวันที่ปฏิบัติงานแล้วเสร็จในไฟล์';
     syncChips();
     run();
   }
@@ -1428,7 +1428,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var b = $('banner');
     var period = L.periodLabel(p);
     if (p.usedRows === 0) {
-      b.innerHTML = '<div class="banner bad">ไม่มีงานที่ปิดงานภาคสนามในช่วง ' + period +
+      b.innerHTML = '<div class="banner bad">ไม่มีงานที่ปฏิบัติงานแล้วเสร็จในช่วง ' + period +
         ' — ลองขยายช่วงวันที่</div>';
     } else if (p.unmatched.length === 0 && closed) {
       b.innerHTML = '<div class="banner ok">✓ งวด ' + period + ' — จับคู่ได้ครบทุกแถว ยอดค่างาน ' +
@@ -1450,7 +1450,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ['ตัดออก: นอกงวด', p.excluded.outOfRange.rows + ' รายการ', p.excluded.outOfRange.rows ? 'warn' : ''],
       ['โซนที่พบ', p.zones.join(', ') || '—', ''],
       ['ราคาไม่คงที่', p.priceVaries.length, p.priceVaries.length ? 'warn' : ''],
-      ['ไม่มีวันที่ปิดงานภาคสนาม', p.excluded.noDate.rows + ' รายการ', p.excluded.noDate.rows ? 'warn' : '']
+      ['ไม่มีวันที่ปฏิบัติงานแล้วเสร็จ', p.excluded.noDate.rows + ' รายการ', p.excluded.noDate.rows ? 'warn' : '']
     ];
     $('stats').innerHTML = cells.map(function (c) {
       return '<div class="stat ' + c[2] + '"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>';
