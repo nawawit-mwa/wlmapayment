@@ -87,6 +87,42 @@ td.kw{font-size:11px;color:#9aa3a8;text-align:center;white-space:nowrap}
 .msg{font-size:14px;margin-top:8px}
 .msg.err{color:var(--bad);font-weight:600}
 .hide{display:none}
+
+/* สลับโหมดเลือกงวด */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.seg button{border:0;border-radius:0;background:#fff;padding:7px 16px;font-size:14.5px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--brand);color:#fff;font-weight:600}
+.seg button.on:hover{background:var(--brand-dk);color:#fff}
+
+/* ชิปเลือกเดือน */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px;
+  background:#fff;cursor:pointer;user-select:none;transition:.12s;line-height:1.4}
+.chip:hover{border-color:var(--brand)}
+.chip.on{background:var(--good-bg);border-color:var(--ok);color:#14603f;font-weight:600}
+.chip .c{font-size:12px;color:var(--ink-2);margin-left:5px}
+.chip.on .c{color:#2e7d5b}
+.chip.all{border-style:dashed}
+
+/* ปฏิทิน popup */
+.dwrap{position:relative}
+input.dpick{cursor:pointer;background:#fff}
+.cal{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:266px;background:#fff;
+  border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 8px 26px rgba(18,49,58,.16)}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-h b{font-size:15px}
+.cal-h button{padding:2px 10px;font-size:16px;line-height:1.3}
+.cal table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cal th{position:static;background:none;color:var(--ink-2);font-weight:600;padding:3px 0;font-size:12.5px}
+.cal td{border:0;padding:1px;text-align:center}
+.cal td span{display:block;padding:5px 0;border-radius:6px;cursor:pointer}
+.cal td span:hover{background:#e8f1f3}
+.cal td span.off{color:#c3ccd0;cursor:not-allowed}
+.cal td span.off:hover{background:none}
+.cal td span.sel{background:var(--brand);color:#fff;font-weight:700}
+.cal-f{display:flex;justify-content:space-between;margin-top:8px}
+.cal-f button{font-size:12.5px;padding:4px 10px}
 .chk{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);cursor:pointer}
 footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
 </style>
@@ -131,23 +167,36 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
         <select id="selContract"></select>
         <div class="hint">แม่แบบระบุสัญญาที่ไม่มีในไฟล์ LR010 — เลือกเองว่าจะใช้ข้อมูลของสัญญาใด</div>
       </div>
-      <div>
-        <label class="fld" for="selMonth">งวดงาน (เลือกเป็นเดือน)</label>
-        <select id="selMonth"></select>
-        <div class="hint">ตามวันที่ปิดงานภาคสนาม · เลือกแล้วช่วงวันที่ด้านขวาจะเติมให้เอง</div>
-      </div>
-      <div>
-        <label class="fld" for="inPFrom">ปิดงานภาคสนาม ตั้งแต่</label>
-        <input type="text" id="inPFrom" placeholder="dd/mm/yyyy">
-        <div class="hint" id="hintPeriod"></div>
-      </div>
-      <div>
-        <label class="fld" for="inPTo">ถึง</label>
-        <input type="text" id="inPTo" placeholder="dd/mm/yyyy">
-        <div class="hint">พิมพ์เองได้ · ปี พ.ศ.</div>
-      </div>
     </div>
-    <div class="msg err hide" id="periodErr"></div>
+
+    <div style="margin-top:16px">
+      <label class="fld">งวดงาน — ตามวันที่ปิดงานภาคสนาม</label>
+      <div class="seg">
+        <button id="btnModeMonth" class="on">เลือกเป็นเดือน</button>
+        <button id="btnModeRange">กำหนดช่วงวันที่</button>
+      </div>
+
+      <div id="wrapMonths">
+        <div class="chips" id="chipMonths"></div>
+        <div class="hint" id="hintMonths">เลือกได้หลายเดือน กดซ้ำเพื่อยกเลิก</div>
+      </div>
+
+      <div id="wrapRange" class="hide">
+        <div class="grid" style="max-width:520px">
+          <div class="dwrap">
+            <label class="fld" for="inPFrom">ตั้งแต่</label>
+            <input type="text" id="inPFrom" class="dpick" readonly placeholder="เลือกวันที่">
+            <div class="hint" id="hintPeriod"></div>
+          </div>
+          <div class="dwrap">
+            <label class="fld" for="inPTo">ถึง</label>
+            <input type="text" id="inPTo" class="dpick" readonly placeholder="เลือกวันที่">
+            <div class="hint">กดที่ช่องเพื่อเปิดปฏิทิน · ปี พ.ศ.</div>
+          </div>
+        </div>
+      </div>
+      <div class="msg err hide" id="periodErr"></div>
+    </div>
   </div>
 
   <div class="card hide" id="cardHead">
@@ -500,6 +549,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // งวดงานกำหนดด้วย "วันที่ปฏิบัติงานแล้วเสร็จ" (วันที่ปิดงานภาคสนาม)
     var periodFrom = opts.periodFrom === undefined ? null : opts.periodFrom;  // yyyymmdd (พ.ศ.)
     var periodTo = opts.periodTo === undefined ? null : opts.periodTo;
+    // เลือกเป็นเดือน (หลายเดือนได้) — ถ้ามีค่า จะใช้แทนช่วงวันที่
+    var periodMonths = (opts.periodMonths && opts.periodMonths.length) ? opts.periodMonths.slice() : null;
+    var monthSet = null;
+    if (periodMonths) { monthSet = {}; periodMonths.forEach(function (m) { monthSet[m] = 1; }); }
 
     /* ---- รอบแรก: กรองสัญญา/สถานะ/ประเภท เพื่อหาช่วงวันที่ปิดงานที่เลือกได้ ---- */
     var cand = [], skipped = { contract: 0, status: 0, type: 0, noFieldEnd: 0, outOfRange: 0 };
@@ -543,7 +596,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (rec.job) excluded.noDate.jobs[rec.job] = 1;
         return;
       }
-      if ((periodFrom !== null && cd < periodFrom) || (periodTo !== null && cd > periodTo)) {
+      var outside = monthSet
+        ? !monthSet[monthOf(cd)]
+        : ((periodFrom !== null && cd < periodFrom) || (periodTo !== null && cd > periodTo));
+      if (outside) {
         skipped.outOfRange++;
         excluded.outOfRange.rows++; excluded.outOfRange.amount += rec.amount;
         if (rec.job) excluded.outOfRange.jobs[rec.job] = 1;
@@ -632,7 +688,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       candRows: cand.length,
       periodAvail: closeMin === null ? null : { min: closeMin, max: closeMax },
       months: months,
-      periodFrom: periodFrom, periodTo: periodTo,
+      periodFrom: periodFrom, periodTo: periodTo, periodMonths: periodMonths,
       excluded: {
         noDate: { rows: excluded.noDate.rows, amount: excluded.noDate.amount, jobs: Object.keys(excluded.noDate.jobs).length },
         outOfRange: { rows: excluded.outOfRange.rows, amount: excluded.outOfRange.amount, jobs: Object.keys(excluded.outOfRange.jobs).length }
@@ -841,6 +897,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ============================================================
      5. ชีตสรุป — ตรวจว่ายอดจาก LR010 ตรงกับชีตที่สร้างใหม่
      ============================================================ */
+  function periodLabel(plan) {
+    if (plan.periodMonths && plan.periodMonths.length) {
+      return plan.periodMonths.slice().sort().map(monthLabel).join(', ');
+    }
+    return (plan.periodFrom === null ? 'ทั้งหมด' : fmtDate(plan.periodFrom)) + '  ถึง  ' +
+      (plan.periodTo === null ? 'ทั้งหมด' : fmtDate(plan.periodTo));
+  }
+
   function buildSummarySheet(wb, boq, plan, header, dataStart, dataEnd, sumRow, catRange) {
     var ws = wb.addWorksheet(SHEET2);
     var REF = "'" + SHEET1 + "'!";
@@ -897,9 +961,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       { note: plan.contractMatched === false ? 'ไม่ตรงกับแม่แบบ — ผู้ใช้เลือกเอง' : '' });
     kv('วันที่เริ่มต้น', header.dateFrom);
     kv('วันที่สิ้นสุด', header.dateTo);
-    kv('งวดงาน (วันที่ปิดงานภาคสนาม)',
-      (plan.periodFrom === null ? 'ทั้งหมด' : fmtDate(plan.periodFrom)) + '  ถึง  ' +
-      (plan.periodTo === null ? 'ทั้งหมด' : fmtDate(plan.periodTo)), { bold: true });
+    kv('งวดงาน (วันที่ปิดงานภาคสนาม)', periodLabel(plan), { bold: true });
     kv('โซนที่พบข้อมูลใน LR010', plan.zones.length ? plan.zones.join(', ') : '—');
     kv('จำนวนงาน (job) ที่นับได้', plan.jobCount);
     kv('รายการ LR010 ที่ใช้ (ปิดงาน + ค่างาน + อยู่ในงวด)', plan.usedRows,
@@ -1073,6 +1135,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     dateSortable: dateSortable,
     fmtDate: fmtDate,
     monthFirst: monthFirst,
+    monthLabel: monthLabel,
+    periodLabel: periodLabel,
     monthLast: monthLast,
     findContractInLR: findContractInLR,
     keyId: keyId,
@@ -1186,7 +1250,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     $('cardCfg').classList.remove('hide');
     sel.onchange = contractChanged;
-    $('selMonth').onchange = monthChanged;
     $('inPFrom').onchange = run;
     $('inPTo').onchange = run;
     $('chkAll').onchange = renderPreview;
@@ -1194,63 +1257,175 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   /* ---------- งวดงาน (วันที่ปิดงานภาคสนาม) ---------- */
+  state.mode = 'month';        // 'month' = เลือกเป็นเดือน · 'range' = กำหนดช่วงวันที่
+  state.months = [];           // ym ที่เลือกอยู่
+
+  function setMode(m) {
+    state.mode = m;
+    $('btnModeMonth').classList.toggle('on', m === 'month');
+    $('btnModeRange').classList.toggle('on', m === 'range');
+    $('wrapMonths').classList.toggle('hide', m !== 'month');
+    $('wrapRange').classList.toggle('hide', m !== 'range');
+    run();
+  }
+  $('btnModeMonth').addEventListener('click', function () { setMode('month'); });
+  $('btnModeRange').addEventListener('click', function () { setMode('range'); });
+
   function contractChanged() {
-    // สำรวจช่วงวันที่ที่เลือกได้ของสัญญานี้ก่อน แล้วตั้งค่าเริ่มต้นเป็นช่วงทั้งหมด
+    // สำรวจช่วงวันที่ที่เลือกได้ของสัญญานี้ก่อน
     var probe = L.buildPlan(state.boq, state.lr, { contract: $('selContract').value });
     state.probe = probe;
+    state.months = probe.months.map(function (m) { return m.ym; });   // ค่าเริ่มต้น = ทุกเดือน
 
-    var m = $('selMonth');
-    m.innerHTML = '';
-    var oAll = document.createElement('option');
-    oAll.value = 'all'; oAll.textContent = 'ทั้งหมด (' + probe.months.length + ' เดือน)';
-    m.appendChild(oAll);
-    probe.months.forEach(function (mo) {
-      var o = document.createElement('option');
-      o.value = String(mo.ym);
-      o.textContent = mo.label + '  (' + mo.jobs + ' job / ' + mo.rows + ' รายการ)';
-      m.appendChild(o);
-    });
-    // ถ้ามีเดือนเดียว เลือกให้เลย
-    m.value = probe.months.length === 1 ? String(probe.months[0].ym) : 'all';
+    var box = $('chipMonths');
+    box.innerHTML = '';
+    if (!probe.months.length) {
+      box.innerHTML = '<span class="hint">ไม่พบวันที่ปิดงานภาคสนามในไฟล์</span>';
+    } else {
+      var all = document.createElement('span');
+      all.className = 'chip all on';
+      all.id = 'chipAll';
+      all.textContent = 'ทั้งหมด';
+      all.onclick = function () {
+        var everything = state.months.length === probe.months.length;
+        state.months = everything ? [] : probe.months.map(function (m) { return m.ym; });
+        syncChips(); run();
+      };
+      box.appendChild(all);
+      probe.months.forEach(function (mo) {
+        var c = document.createElement('span');
+        c.className = 'chip on';
+        c.dataset.ym = String(mo.ym);
+        c.innerHTML = esc(mo.label) + '<span class="c">' + mo.jobs + ' job</span>';
+        c.onclick = function () {
+          var i = state.months.indexOf(mo.ym);
+          if (i >= 0) state.months.splice(i, 1); else state.months.push(mo.ym);
+          syncChips(); run();
+        };
+        box.appendChild(c);
+      });
+    }
 
+    $('inPFrom').value = probe.periodAvail ? L.fmtDate(probe.periodAvail.min) : '';
+    $('inPTo').value = probe.periodAvail ? L.fmtDate(probe.periodAvail.max) : '';
     $('hintPeriod').textContent = probe.periodAvail
       ? 'ในไฟล์มีตั้งแต่ ' + L.fmtDate(probe.periodAvail.min) + ' ถึง ' + L.fmtDate(probe.periodAvail.max)
       : 'ไม่พบวันที่ปิดงานภาคสนามในไฟล์';
-    monthChanged();
-  }
-
-  function monthChanged() {
-    var v = $('selMonth').value, p = state.probe;
-    if (v === 'all') {
-      $('inPFrom').value = p.periodAvail ? L.fmtDate(p.periodAvail.min) : '';
-      $('inPTo').value = p.periodAvail ? L.fmtDate(p.periodAvail.max) : '';
-    } else {
-      var ym = parseInt(v, 10);
-      $('inPFrom').value = L.fmtDate(L.monthFirst(ym));
-      $('inPTo').value = L.fmtDate(L.monthLast(ym));
-    }
+    syncChips();
     run();
   }
 
-  function run() {
-    var e = $('periodErr');
-    var from = L.dateSortable($('inPFrom').value), to = L.dateSortable($('inPTo').value);
-    var raw = [$('inPFrom').value.trim(), $('inPTo').value.trim()];
-    if ((raw[0] && from === null) || (raw[1] && to === null)) {
-      e.textContent = 'รูปแบบวันที่ไม่ถูกต้อง ต้องเป็น dd/mm/yyyy ปี พ.ศ. เช่น 01/06/2569';
-      e.classList.remove('hide');
-      return;
+  function syncChips() {
+    var p = state.probe;
+    [].forEach.call($('chipMonths').querySelectorAll('.chip[data-ym]'), function (c) {
+      c.classList.toggle('on', state.months.indexOf(parseInt(c.dataset.ym, 10)) >= 0);
+    });
+    var all = $('chipAll');
+    if (all) all.classList.toggle('on', state.months.length === p.months.length);
+    $('hintMonths').textContent = state.months.length
+      ? 'เลือกไว้ ' + state.months.length + ' จาก ' + p.months.length + ' เดือน'
+      : 'ยังไม่ได้เลือกเดือน — กดเลือกอย่างน้อย 1 เดือน';
+  }
+
+  /* ---------- ปฏิทิน popup ---------- */
+  var TH_MON_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  var DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+  var openCal = null;
+
+  function closeCal() { if (openCal) { openCal.remove(); openCal = null; } }
+  document.addEventListener('click', function (e) {
+    if (openCal && !openCal.contains(e.target) && !e.target.classList.contains('dpick')) closeCal();
+  });
+
+  function showCal(input) {
+    closeCal();
+    var av = state.probe ? state.probe.periodAvail : null;
+    var cur = L.dateSortable(input.value);
+    var view = cur !== null ? Math.floor(cur / 100) : (av ? Math.floor(av.min / 100) : 256901);
+
+    var cal = document.createElement('div');
+    cal.className = 'cal';
+    input.parentNode.appendChild(cal);
+    openCal = cal;
+
+    function draw() {
+      var y = Math.floor(view / 100), m = view % 100;
+      var first = new Date(y - 543, m - 1, 1).getDay();
+      var days = new Date(y - 543, m, 0).getDate();
+      var html = '<div class="cal-h"><button type="button" data-go="-1">‹</button>' +
+        '<b>' + TH_MON_FULL[m - 1] + ' ' + y + '</b>' +
+        '<button type="button" data-go="1">›</button></div><table><tr>' +
+        DOW.map(function (d) { return '<th>' + d + '</th>'; }).join('') + '</tr><tr>';
+      for (var i = 0; i < first; i++) html += '<td></td>';
+      for (var d = 1; d <= days; d++) {
+        var val = view * 100 + d;
+        var off = av && (val < av.min || val > av.max);
+        var sel = cur === val;
+        if ((first + d - 1) % 7 === 0 && d > 1) html += '</tr><tr>';
+        html += '<td><span class="' + (off ? 'off' : '') + (sel ? ' sel' : '') +
+          '" data-d="' + (off ? '' : val) + '">' + d + '</span></td>';
+      }
+      html += '</tr></table><div class="cal-f"><button type="button" data-set="min">วันแรกที่มีข้อมูล</button>' +
+        '<button type="button" data-set="max">วันสุดท้าย</button></div>';
+      cal.innerHTML = html;
+
+      [].forEach.call(cal.querySelectorAll('[data-go]'), function (b) {
+        b.onclick = function () {
+          var y2 = Math.floor(view / 100), m2 = view % 100 + parseInt(b.dataset.go, 10);
+          if (m2 < 1) { m2 = 12; y2--; } else if (m2 > 12) { m2 = 1; y2++; }
+          view = y2 * 100 + m2; draw();
+        };
+      });
+      [].forEach.call(cal.querySelectorAll('span[data-d]'), function (sp) {
+        if (!sp.dataset.d) return;
+        sp.onclick = function () {
+          input.value = L.fmtDate(parseInt(sp.dataset.d, 10));
+          closeCal(); run();
+        };
+      });
+      [].forEach.call(cal.querySelectorAll('[data-set]'), function (b) {
+        b.onclick = function () {
+          if (!av) return;
+          input.value = L.fmtDate(b.dataset.set === 'min' ? av.min : av.max);
+          closeCal(); run();
+        };
+      });
     }
-    if (from !== null && to !== null && from > to) {
-      e.textContent = 'วันที่เริ่มต้นของงวดอยู่หลังวันที่สิ้นสุด';
-      e.classList.remove('hide');
-      return;
+    draw();
+  }
+  ['inPFrom', 'inPTo'].forEach(function (id) {
+    $(id).addEventListener('click', function (e) { e.stopPropagation(); showCal(this); });
+  });
+
+  function run() {
+    if (!state.probe) return;
+    var e = $('periodErr'), opts = { contract: $('selContract').value };
+
+    if (state.mode === 'month') {
+      if (!state.months.length) {
+        e.textContent = 'ยังไม่ได้เลือกเดือน — กดเลือกอย่างน้อย 1 เดือน';
+        e.classList.remove('hide');
+        return;
+      }
+      opts.periodMonths = state.months;
+    } else {
+      var from = L.dateSortable($('inPFrom').value), to = L.dateSortable($('inPTo').value);
+      if (from === null || to === null) {
+        e.textContent = 'เลือกวันที่ให้ครบทั้งสองช่อง';
+        e.classList.remove('hide');
+        return;
+      }
+      if (from > to) {
+        e.textContent = 'วันที่เริ่มต้นของงวดอยู่หลังวันที่สิ้นสุด';
+        e.classList.remove('hide');
+        return;
+      }
+      opts.periodFrom = from; opts.periodTo = to;
     }
     e.classList.add('hide');
 
-    state.plan = L.buildPlan(state.boq, state.lr, {
-      contract: $('selContract').value, periodFrom: from, periodTo: to
-    });
+    state.plan = L.buildPlan(state.boq, state.lr, opts);
     state.plan.contractMatched = !!state.matched;
     $('inFrom').value = state.plan.dateFrom;
     $('inTo').value = state.plan.dateTo;
@@ -1266,8 +1441,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var p = state.plan;
     var closed = Math.abs(p.lrTotal - p.unmatchedTotal - p.matchedTotal) < 0.005;
     var b = $('banner');
-    var period = (p.periodFrom === null ? '' : L.fmtDate(p.periodFrom)) + ' – ' +
-      (p.periodTo === null ? '' : L.fmtDate(p.periodTo));
+    var period = L.periodLabel(p);
     if (p.usedRows === 0) {
       b.innerHTML = '<div class="banner bad">ไม่มีงานที่ปิดงานภาคสนามในช่วง ' + period +
         ' — ลองขยายช่วงวันที่</div>';
