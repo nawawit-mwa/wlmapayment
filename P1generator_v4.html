@@ -113,6 +113,7 @@ input.dpick{cursor:pointer;background:#fff}
 .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cal-h b{font-size:15px}
 .cal-h button{padding:2px 10px;font-size:16px;line-height:1.3}
+.cal-h button:disabled{opacity:.3}
 .cal table{width:100%;border-collapse:collapse;font-size:13.5px}
 .cal th{position:static;background:none;color:var(--ink-2);font-weight:600;padding:3px 0;font-size:12.5px}
 .cal td{border:0;padding:1px;text-align:center}
@@ -199,29 +200,8 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
     </div>
   </div>
 
-  <div class="card hide" id="cardHead">
-    <h2><span class="n">3</span>ตรวจหัวเอกสาร</h2>
-    <div class="grid">
-      <div>
-        <label class="fld" for="inFrom">วันที่เริ่มต้น</label>
-        <input type="text" id="inFrom" placeholder="dd/mm/yyyy">
-        <div class="hint">วันที่เริ่มปฏิบัติงานแรกสุดของงานในงวด — แก้ไขได้</div>
-      </div>
-      <div>
-        <label class="fld" for="inTo">วันที่สิ้นสุด</label>
-        <input type="text" id="inTo" placeholder="dd/mm/yyyy">
-        <div class="hint">วันที่ปิดงานภาคสนามล่าสุดของงานในงวด — แก้ไขได้</div>
-      </div>
-      <div>
-        <label class="fld" for="inNote">หมายเหตุ</label>
-        <input type="text" id="inNote" placeholder="เว้นว่างได้">
-        <div class="hint">พิมพ์เองได้ตามต้องการ</div>
-      </div>
-    </div>
-  </div>
-
   <div class="card hide" id="cardResult">
-    <h2><span class="n">4</span>ผลการเติมข้อมูล</h2>
+    <h2><span class="n">3</span>ผลการเติมข้อมูล</h2>
     <div id="banner"></div>
     <div class="stats" id="stats"></div>
     <div class="row" style="margin-bottom:10px">
@@ -1353,9 +1333,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var y = Math.floor(view / 100), m = view % 100;
       var first = new Date(y - 543, m - 1, 1).getDay();
       var days = new Date(y - 543, m, 0).getDate();
-      var html = '<div class="cal-h"><button type="button" data-go="-1">‹</button>' +
+      var minYm = av ? Math.floor(av.min / 100) : null;
+      var maxYm = av ? Math.floor(av.max / 100) : null;
+      var noPrev = minYm !== null && view <= minYm;
+      var noNext = maxYm !== null && view >= maxYm;
+      var html = '<div class="cal-h"><button type="button" data-go="-1"' + (noPrev ? ' disabled' : '') + '>‹</button>' +
         '<b>' + TH_MON_FULL[m - 1] + ' ' + y + '</b>' +
-        '<button type="button" data-go="1">›</button></div><table><tr>' +
+        '<button type="button" data-go="1"' + (noNext ? ' disabled' : '') + '>›</button></div><table><tr>' +
         DOW.map(function (d) { return '<th>' + d + '</th>'; }).join('') + '</tr><tr>';
       for (var i = 0; i < first; i++) html += '<td></td>';
       for (var d = 1; d <= days; d++) {
@@ -1371,7 +1355,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cal.innerHTML = html;
 
       [].forEach.call(cal.querySelectorAll('[data-go]'), function (b) {
-        b.onclick = function () {
+        b.onclick = function (ev) {
+          ev.stopPropagation();          // กันไม่ให้ document click สั่งปิดปฏิทิน
+          if (b.disabled) return;
           var y2 = Math.floor(view / 100), m2 = view % 100 + parseInt(b.dataset.go, 10);
           if (m2 < 1) { m2 = 12; y2--; } else if (m2 > 12) { m2 = 1; y2++; }
           view = y2 * 100 + m2; draw();
@@ -1379,13 +1365,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
       [].forEach.call(cal.querySelectorAll('span[data-d]'), function (sp) {
         if (!sp.dataset.d) return;
-        sp.onclick = function () {
+        sp.onclick = function (ev) {
+          ev.stopPropagation();
           input.value = L.fmtDate(parseInt(sp.dataset.d, 10));
           closeCal(); run();
         };
       });
       [].forEach.call(cal.querySelectorAll('[data-set]'), function (b) {
-        b.onclick = function () {
+        b.onclick = function (ev) {
+          ev.stopPropagation();
           if (!av) return;
           input.value = L.fmtDate(b.dataset.set === 'min' ? av.min : av.max);
           closeCal(); run();
@@ -1427,9 +1415,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     state.plan = L.buildPlan(state.boq, state.lr, opts);
     state.plan.contractMatched = !!state.matched;
-    $('inFrom').value = state.plan.dateFrom;
-    $('inTo').value = state.plan.dateTo;
-    $('cardHead').classList.remove('hide');
     $('cardResult').classList.remove('hide');
     renderStats();
     renderPreview();
@@ -1543,9 +1528,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       try {
         var wb = L.buildWorkbook(ExcelJS, state.boq, state.plan, {
           contract: state.boqContract || $('selContract').value,
-          dateFrom: $('inFrom').value.trim(),
-          dateTo: $('inTo').value.trim(),
-          note: $('inNote').value.trim()
+          dateFrom: state.plan.dateFrom,
+          dateTo: state.plan.dateTo,
+          note: ''
         });
         wb.xlsx.writeBuffer().then(function (buf) {
           // ชื่อไฟล์ต้องเป็น ASCII ล้วน มิฉะนั้น Chromium จะทิ้งชื่อทั้งหมดเมื่อเปิดแบบ file://
