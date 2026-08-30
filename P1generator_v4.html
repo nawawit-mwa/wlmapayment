@@ -1447,10 +1447,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ['จับคู่ไม่ได้', fmt(p.unmatchedTotal), p.unmatched.length ? 'warn' : ''],
       ['รายการที่มีข้อมูล', p.matchedKeys + ' / ' + state.boq.leafCount, ''],
       ['จำนวนงาน (job) ในงวด', p.jobCount, ''],
-      ['ตัดออก: นอกงวด', p.excluded.outOfRange.rows + ' รายการ', p.excluded.outOfRange.rows ? 'warn' : ''],
-      ['โซนที่พบ', p.zones.join(', ') || '—', ''],
-      ['ราคาไม่คงที่', p.priceVaries.length, p.priceVaries.length ? 'warn' : ''],
-      ['ไม่มีวันที่ปฏิบัติงานแล้วเสร็จ', p.excluded.noDate.rows + ' รายการ', p.excluded.noDate.rows ? 'warn' : '']
+      ['โซนที่พบ', p.zones.join(', ') || '—', '']
     ];
     $('stats').innerHTML = cells.map(function (c) {
       return '<div class="stat ' + c[2] + '"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>';
