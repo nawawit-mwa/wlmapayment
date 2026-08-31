@@ -153,6 +153,7 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
       </label>
     </div>
     <div class="msg err hide" id="loadErr"></div>
+    <div id="covBox"></div>
   </div>
 
   <div class="card hide" id="cardCfg">
@@ -491,8 +492,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       recs.push(rec);
       if (rec.contract) contracts[rec.contract] = (contracts[rec.contract] || 0) + 1;
     }
-    return { headerRow: hdrRow + 1, col: col, records: recs, contracts: contracts };
+    return { headerRow: hdrRow + 1, col: col, records: recs, contracts: contracts,
+      exportRange: readExportRange(aoa, hdrRow) };
   }
+
+  /* หัวรายงาน LR010 บอกช่วงวันที่ที่ export มา เช่น "ตั้งแต่ 01/07/2569 ถึง 31/07/2569"
+     ใช้เตือนกรณีงานค้างข้ามเดือนที่อาจไม่อยู่ในไฟล์ */
+  function readExportRange(aoa, hdrRow) {
+    var re = /ตั้งแต่\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*ถึง\s*(\d{1,2}\/\d{1,2}\/\d{4})/;
+    for (var r = 0; r < Math.min(hdrRow, 12); r++) {
+      var row = aoa[r] || [];
+      for (var c = 0; c < row.length; c++) {
+        var m = re.exec(s_(row[c]));
+        if (m) return { from: dateSortable(m[1]), to: dateSortable(m[2]), text: trim(row[c]) };
+      }
+    }
+    return null;
+  }
+  function s_(v) { return v === null || v === undefined ? '' : String(v); }
 
   /* แยก numericKey จากคอลัมน์ "รายละเอียดค่าใช้จ่าย" ของ LR010 */
   function keyFromDetail(detail) {
@@ -673,7 +690,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         noDate: { rows: excluded.noDate.rows, amount: excluded.noDate.amount, jobs: Object.keys(excluded.noDate.jobs).length },
         outOfRange: { rows: excluded.outOfRange.rows, amount: excluded.outOfRange.amount, jobs: Object.keys(excluded.outOfRange.jobs).length }
       },
-      jobCloseConflict: jobCloseConflict
+      jobCloseConflict: jobCloseConflict,
+      coverage: assessCoverage(lr.exportRange, periodFrom, periodTo, periodMonths)
     };
   }
 
@@ -689,6 +707,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var gy = y - 543;
     if (m === 2 && ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0)) days = 29;
     return ym * 100 + days;
+  }
+
+  /* เทียบงวดที่เลือกกับช่วงที่ไฟล์ LR010 ครอบคลุม
+     - งานที่ "เปิดก่อนช่วง export แต่ทำเสร็จในงวด" จะไม่อยู่ในไฟล์เลย ระบบมองไม่เห็น จึงต้องเตือนล่วงหน้า */
+  function assessCoverage(range, periodFrom, periodTo, periodMonths) {
+    var pf = periodFrom, pt = periodTo;
+    if (periodMonths && periodMonths.length) {
+      var sorted = periodMonths.slice().sort();
+      pf = monthFirst(sorted[0]);
+      pt = monthLast(sorted[sorted.length - 1]);
+    }
+    if (!range || range.from === null || range.to === null || pf === null || pt === null) {
+      return { known: false, level: 'unknown', range: range, periodFrom: pf, periodTo: pt };
+    }
+    var startsAtOrBefore = pf <= range.from;   // งวดเริ่มก่อน/พอดีวันแรกของไฟล์ → เสี่ยงงานค้างตกหล่น
+    var endsAfter = pt > range.to;             // งวดเลยวันสุดท้ายของไฟล์ → ข้อมูลปลายงวดไม่ครบ
+    return {
+      known: true, range: range, periodFrom: pf, periodTo: pt,
+      startsAtOrBefore: startsAtOrBefore, endsAfter: endsAfter,
+      level: (startsAtOrBefore || endsAfter) ? 'warn' : 'ok'
+    };
   }
 
   function fmtDate(n) {
@@ -946,6 +985,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     kv('จำนวนงาน (job) ที่นับได้', plan.jobCount);
     kv('รายการ LR010 ที่ใช้ (ปิดงาน + ค่างาน + อยู่ในงวด)', plan.usedRows,
       { note: 'จากทั้งหมด ' + plan.totalRows + ' รายการ' });
+    var cov = plan.coverage;
+    kv('ช่วงวันที่ที่ไฟล์ LR010 ครอบคลุม',
+      cov && cov.range ? fmtDate(cov.range.from) + '  ถึง  ' + fmtDate(cov.range.to) : 'อ่านจากหัวรายงานไม่ได้',
+      cov && cov.level === 'warn'
+        ? { fill: 'FFFFF6D6', note: 'งวดที่เลือกเลยขอบของไฟล์ — งานค้างข้ามเดือนอาจไม่อยู่ในไฟล์นี้' }
+        : {});
+    if (cov && cov.level === 'warn') {
+      kv('', (cov.startsAtOrBefore ? 'งานที่เปิดก่อน ' + fmtDate(cov.range.from) +
+        ' แต่ปฏิบัติงานแล้วเสร็จในงวดนี้ จะไม่อยู่ในไฟล์ ทำให้เบิกขาดโดยระบบตรวจไม่พบ — ' +
+        'ควร export LR010 ใหม่โดยขยายช่วงย้อนหลังอย่างน้อย 1-2 เดือน. ' : '') +
+        (cov.endsAfter ? 'งวดที่เลือกเลยวันสุดท้ายของไฟล์ (' + fmtDate(cov.range.to) +
+        ') ข้อมูลปลายงวดอาจไม่ครบ' : ''), { fill: 'FFFFF6D6' });
+    }
     kv('ตัดออก: ปฏิบัติงานแล้วเสร็จนอกงวด', plan.excluded.outOfRange.rows + ' รายการ / ' +
       plan.excluded.outOfRange.jobs + ' job', { note: 'ยอด ' + plan.excluded.outOfRange.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท' });
     if (plan.excluded.noDate.rows) {
@@ -1439,6 +1491,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         ' บาท — รายละเอียดอยู่ในชีต "สรุปตรวจสอบ" ของไฟล์ที่บันทึก</div>';
     } else {
       b.innerHTML = '<div class="banner bad">ยอดรวมไม่ปิด กรุณาตรวจสอบไฟล์ต้นทาง</div>';
+    }
+
+    // เตือนเรื่องความครอบคลุมของไฟล์ LR010 (งานค้างข้ามเดือน)
+    var cov = p.coverage, cb = $('covBox');
+    if (!cov || !cov.known) {
+      cb.innerHTML = '<div class="banner warn" style="margin-top:12px;margin-bottom:0">' +
+        'อ่านช่วงวันที่จากหัวรายงาน LR010 ไม่ได้ — <b>ตรวจเองว่าไฟล์นี้ครอบคลุมงวดที่จะเบิก ' +
+        'รวมถึงงานค้างข้ามเดือนที่เปิดงานเดือนก่อนแต่มาปฏิบัติงานแล้วเสร็จในงวดนี้</b></div>';
+    } else if (cov.level === 'warn') {
+      var msg = '<b>ไฟล์ LR010 ครอบคลุม ' + L.fmtDate(cov.range.from) + ' – ' + L.fmtDate(cov.range.to) +
+        ' · งวดที่เลือก ' + L.fmtDate(cov.periodFrom) + ' – ' + L.fmtDate(cov.periodTo) + '</b><br>';
+      if (cov.startsAtOrBefore) {
+        msg += 'งานที่เปิดก่อน ' + L.fmtDate(cov.range.from) +
+          ' แต่ปฏิบัติงานแล้วเสร็จในงวดนี้ จะไม่อยู่ในไฟล์เลย ระบบจึงตรวจไม่พบว่าขาด — ' +
+          'ควร export LR010 ใหม่โดยขยายช่วงย้อนหลังอย่างน้อย 1–2 เดือน';
+      }
+      if (cov.endsAfter) {
+        msg += (cov.startsAtOrBefore ? '<br>' : '') + 'งวดที่เลือกเลยวันสุดท้ายของไฟล์ (' +
+          L.fmtDate(cov.range.to) + ') ข้อมูลปลายงวดอาจไม่ครบ';
+      }
+      cb.innerHTML = '<div class="banner warn" style="margin-top:12px;margin-bottom:0">' + msg + '</div>';
+    } else {
+      cb.innerHTML = '<div class="banner ok" style="margin-top:12px;margin-bottom:0">' +
+        'ไฟล์ LR010 ครอบคลุม ' + L.fmtDate(cov.range.from) + ' – ' + L.fmtDate(cov.range.to) +
+        ' — กว้างกว่างวดที่เลือกทั้งสองด้าน ครอบคลุมงานค้างข้ามเดือนแล้ว</div>';
     }
 
     var cells = [
