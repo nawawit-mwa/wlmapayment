@@ -104,6 +104,8 @@ td.kw{font-size:11px;color:#9aa3a8;text-align:center;white-space:nowrap}
 .chip .c{font-size:12px;color:var(--ink-2);margin-left:5px}
 .chip.on .c{color:#2e7d5b}
 .chip.all{border-style:dashed}
+.chip.risky{border-color:#efd9a0;background:#fffdf5;color:var(--warn)}
+.chip.risky.on{background:var(--warn-bg);border-color:#e0a800;color:#7a4e00}
 
 /* ปฏิทิน popup */
 .dwrap{position:relative}
@@ -153,7 +155,6 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
       </label>
     </div>
     <div class="msg err hide" id="loadErr"></div>
-    <div id="covBox"></div>
   </div>
 
   <div class="card hide" id="cardCfg">
@@ -198,6 +199,7 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
         </div>
       </div>
       <div class="msg err hide" id="periodErr"></div>
+      <div id="covBox"></div>
     </div>
   </div>
 
@@ -499,15 +501,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* หัวรายงาน LR010 บอกช่วงวันที่ที่ export มา เช่น "ตั้งแต่ 01/07/2569 ถึง 31/07/2569"
      ใช้เตือนกรณีงานค้างข้ามเดือนที่อาจไม่อยู่ในไฟล์ */
   function readExportRange(aoa, hdrRow) {
-    var re = /ตั้งแต่\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*ถึง\s*(\d{1,2}\/\d{1,2}\/\d{4})/;
+    // รองรับทั้ง "ตั้งแต่ … ถึง …" และ "…จากวันที่ … ถึง …" · ปีเขียน 2 หรือ 4 หลัก
+    var re = /(?:ตั้งแต่|จากวันที่)\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*ถึง\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/;
     for (var r = 0; r < Math.min(hdrRow, 12); r++) {
       var row = aoa[r] || [];
       for (var c = 0; c < row.length; c++) {
         var m = re.exec(s_(row[c]));
-        if (m) return { from: dateSortable(m[1]), to: dateSortable(m[2]), text: trim(row[c]) };
+        if (m) return { from: dateSortable(expandYear(m[1])), to: dateSortable(expandYear(m[2])), text: trim(row[c]) };
       }
     }
     return null;
+  }
+  /* "01/02/69" -> "01/02/2569" */
+  function expandYear(d) {
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(trim(d));
+    if (!m) return d;
+    return m[1] + '/' + m[2] + '/' + (2500 + parseInt(m[3], 10));
   }
   function s_(v) { return v === null || v === undefined ? '' : String(v); }
 
@@ -560,6 +569,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cand.push(rec);
     });
 
+    /* ขอบเขตของไฟล์ = ช่วงวันที่เปิดงานที่มีจริงในข้อมูล
+       ใช้แทนการอ่านหัวรายงาน เพราะ WLMA export ด้วยวันที่เปิดงาน ขอบของช่วงจึงปรากฏในข้อมูลอยู่แล้ว
+       และไม่ขึ้นกับรูปแบบข้อความหัวรายงานซึ่งต่างกันตามรุ่น */
+    var openMin = null, openMax = null;
+    cand.forEach(function (rec) {
+      var od = dateSortable(rec.openDate);
+      if (od === null) return;
+      if (openMin === null || od < openMin) openMin = od;
+      if (openMax === null || od > openMax) openMax = od;
+    });
+
     var closeMin = null, closeMax = null, monthMap = {}, jobClose = {};
     cand.forEach(function (rec) {
       var cd = dateSortable(rec.fieldEnd);
@@ -573,8 +593,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (rec.job) { if (!jobClose[rec.job]) jobClose[rec.job] = {}; jobClose[rec.job][rec.fieldEnd] = 1; }
     });
     var months = Object.keys(monthMap).sort().map(function (k) {
-      return { ym: monthMap[k].ym, label: monthMap[k].label, rows: monthMap[k].rows,
-        jobs: Object.keys(monthMap[k].jobs).length };
+      var ym = monthMap[k].ym;
+      var safe = openMin !== null && openMax !== null &&
+        monthFirst(ym) > openMin && monthLast(ym) <= openMax;
+      return { ym: ym, label: monthMap[k].label, rows: monthMap[k].rows,
+        jobs: Object.keys(monthMap[k].jobs).length, safe: safe };
     });
     // job ที่มีวันที่ปิดงานไม่ตรงกันหลายค่า — ปกติไม่ควรเกิด
     var jobCloseConflict = [];
@@ -607,11 +630,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     var groups = {}, unmatched = [], noZone = [], jobs = {}, minD = null, maxD = null;
     used.forEach(function (rec) {
-      // หัวเอกสารใช้ช่วงเวลาปฏิบัติงานจริง (เริ่มปฏิบัติงาน .. ปฏิบัติงานแล้วเสร็จ)
-      var ds = dateSortable(rec.fieldStart) || dateSortable(rec.openDate);
-      var de = dateSortable(rec.fieldEnd) || dateSortable(rec.fieldStart) || dateSortable(rec.openDate);
-      if (ds !== null && (minD === null || ds < minD)) minD = ds;
-      if (de !== null && (maxD === null || de > maxD)) maxD = de;
+      // หัวเอกสารใช้ "วันที่ปฏิบัติงานแล้วเสร็จ" ทั้งช่วง (น้อยสุด .. มากสุด) ของงานในงวด
+      var de = dateSortable(rec.fieldEnd);
+      if (de !== null) {
+        if (minD === null || de < minD) minD = de;
+        if (maxD === null || de > maxD) maxD = de;
+      }
       if (rec.job) jobs[rec.job] = 1;
 
       var k = keyFromDetail(rec.detail);
@@ -691,7 +715,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         outOfRange: { rows: excluded.outOfRange.rows, amount: excluded.outOfRange.amount, jobs: Object.keys(excluded.outOfRange.jobs).length }
       },
       jobCloseConflict: jobCloseConflict,
-      coverage: assessCoverage(lr.exportRange, periodFrom, periodTo, periodMonths)
+      coverage: assessCoverage({ from: openMin, to: openMax }, lr.exportRange, periodFrom, periodTo, periodMonths)
     };
   }
 
@@ -711,20 +735,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* เทียบงวดที่เลือกกับช่วงที่ไฟล์ LR010 ครอบคลุม
      - งานที่ "เปิดก่อนช่วง export แต่ทำเสร็จในงวด" จะไม่อยู่ในไฟล์เลย ระบบมองไม่เห็น จึงต้องเตือนล่วงหน้า */
-  function assessCoverage(range, periodFrom, periodTo, periodMonths) {
+  function assessCoverage(openRange, headerRange, periodFrom, periodTo, periodMonths) {
     var pf = periodFrom, pt = periodTo;
     if (periodMonths && periodMonths.length) {
       var sorted = periodMonths.slice().sort();
       pf = monthFirst(sorted[0]);
       pt = monthLast(sorted[sorted.length - 1]);
     }
-    if (!range || range.from === null || range.to === null || pf === null || pt === null) {
-      return { known: false, level: 'unknown', range: range, periodFrom: pf, periodTo: pt };
+    var known = openRange && openRange.from !== null && openRange.to !== null && pf !== null && pt !== null;
+    if (!known) {
+      return { known: false, level: 'unknown', range: openRange, header: headerRange, periodFrom: pf, periodTo: pt };
     }
-    var startsAtOrBefore = pf <= range.from;   // งวดเริ่มก่อน/พอดีวันแรกของไฟล์ → เสี่ยงงานค้างตกหล่น
-    var endsAfter = pt > range.to;             // งวดเลยวันสุดท้ายของไฟล์ → ข้อมูลปลายงวดไม่ครบ
+    // งานที่เปิดก่อนวันเปิดงานแรกสุดในไฟล์ แต่ปฏิบัติงานแล้วเสร็จในงวดนี้ จะไม่อยู่ในไฟล์เลย
+    var startsAtOrBefore = pf <= openRange.from;
+    var endsAfter = pt > openRange.to;
     return {
-      known: true, range: range, periodFrom: pf, periodTo: pt,
+      known: true, range: openRange, header: headerRange, periodFrom: pf, periodTo: pt,
       startsAtOrBefore: startsAtOrBefore, endsAfter: endsAfter,
       level: (startsAtOrBefore || endsAfter) ? 'warn' : 'ok'
     };
@@ -978,8 +1004,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     kv('เลขที่สัญญา', header.contract, { bold: true });
     kv('เลขที่สัญญาใน LR010 ที่ใช้กรอง', plan.contract || '— ไม่พบสัญญานี้ใน LR010 —',
       { note: plan.contractMatched === false ? 'ไม่ตรงกับแม่แบบ — ผู้ใช้เลือกเอง' : '' });
-    kv('วันที่เริ่มต้น', header.dateFrom);
-    kv('วันที่สิ้นสุด', header.dateTo);
+    kv('วันที่ปฏิบัติงานแล้วเสร็จ จาก', header.dateFrom);
+    kv('วันที่ปฏิบัติงานแล้วเสร็จ ถึง', header.dateTo);
     kv('งวดงาน (วันที่ปฏิบัติงานแล้วเสร็จ)', periodLabel(plan), { bold: true });
     kv('โซนที่พบข้อมูลใน LR010', plan.zones.length ? plan.zones.join(', ') : '—');
     kv('จำนวนงาน (job) ที่นับได้', plan.jobCount);
@@ -1260,7 +1286,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // สำรวจช่วงวันที่ที่เลือกได้ของสัญญานี้ก่อน
     var probe = L.buildPlan(state.boq, state.lr, { contract: $('selContract').value });
     state.probe = probe;
-    state.months = probe.months.map(function (m) { return m.ym; });   // ค่าเริ่มต้น = ทุกเดือน
+    // ค่าเริ่มต้น = เฉพาะเดือนที่ข้อมูลครบขอบทั้งสองด้าน ถ้าไม่มีเลยจึงเลือกทั้งหมด
+    var safe = probe.months.filter(function (m) { return m.safe; }).map(function (m) { return m.ym; });
+    state.months = safe.length ? safe : probe.months.map(function (m) { return m.ym; });
 
     var box = $('chipMonths');
     box.innerHTML = '';
@@ -1268,7 +1296,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       box.innerHTML = '<span class="hint">ไม่พบวันที่ปฏิบัติงานแล้วเสร็จในไฟล์</span>';
     } else {
       var all = document.createElement('span');
-      all.className = 'chip all on';
+      all.className = 'chip all';
       all.id = 'chipAll';
       all.textContent = 'ทั้งหมด';
       all.onclick = function () {
@@ -1279,9 +1307,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       box.appendChild(all);
       probe.months.forEach(function (mo) {
         var c = document.createElement('span');
-        c.className = 'chip on';
+        c.className = 'chip' + (mo.safe ? '' : ' risky');
         c.dataset.ym = String(mo.ym);
-        c.innerHTML = esc(mo.label) + '<span class="c">' + mo.jobs + ' job</span>';
+        if (!mo.safe) c.title = 'ข้อมูลในไฟล์ไม่ครอบคลุมเดือนนี้ทั้งเดือน — อาจมีงานค้างข้ามเดือนตกหล่น';
+        c.innerHTML = (mo.safe ? '' : '⚠ ') + esc(mo.label) +
+          '<span class="c">' + mo.jobs + ' job</span>';
         c.onclick = function () {
           var i = state.months.indexOf(mo.ym);
           if (i >= 0) state.months.splice(i, 1); else state.months.push(mo.ym);
@@ -1307,9 +1337,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     var all = $('chipAll');
     if (all) all.classList.toggle('on', state.months.length === p.months.length);
-    $('hintMonths').textContent = state.months.length
-      ? 'เลือกไว้ ' + state.months.length + ' จาก ' + p.months.length + ' เดือน'
-      : 'ยังไม่ได้เลือกเดือน — กดเลือกอย่างน้อย 1 เดือน';
+    var safeList = p.months.filter(function (m) { return m.safe; });
+    var hint;
+    if (!state.months.length) {
+      hint = 'ยังไม่ได้เลือกเดือน — กดเลือกอย่างน้อย 1 เดือน';
+    } else {
+      hint = 'เลือกไว้ ' + state.months.length + ' จาก ' + p.months.length + ' เดือน';
+      if (safeList.length && safeList.length < p.months.length) {
+        hint += ' · แนะนำงวด ' + safeList.map(function (m) { return m.label; }).join(', ') +
+          ' — เดือนที่มี ⚠ ข้อมูลในไฟล์ไม่ครบทั้งเดือน';
+      } else if (!safeList.length) {
+        hint += ' · ไม่มีเดือนใดที่ข้อมูลในไฟล์ครบทั้งเดือน — ควร export LR010 ให้กว้างขึ้น';
+      }
+    }
+    $('hintMonths').textContent = hint;
   }
 
   /* ---------- ปฏิทิน popup ---------- */
@@ -1449,26 +1490,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // เตือนเรื่องความครอบคลุมของไฟล์ LR010 (งานค้างข้ามเดือน)
     var cov = p.coverage, cb = $('covBox');
     if (!cov || !cov.known) {
-      cb.innerHTML = '<div class="banner warn" style="margin-top:12px;margin-bottom:0">' +
-        'อ่านช่วงวันที่จากหัวรายงาน LR010 ไม่ได้ — <b>ตรวจเองว่าไฟล์นี้ครอบคลุมงวดที่จะเบิก ' +
-        'รวมถึงงานค้างข้ามเดือนที่เปิดงานเดือนก่อนแต่มาปฏิบัติงานแล้วเสร็จในงวดนี้</b></div>';
+      cb.innerHTML = '<div class="banner warn" style="margin-top:12px;margin-bottom:0;text-align:center">' +
+        '<b>หมายเหตุ</b> โปรดตรวจสอบวันที่ของไฟล์ LR010 ให้ครอบคลุมงวดที่จะเบิก ' +
+        'รวมถึงงานค้างข้ามเดือนก่อนหน้านี้</div>';
     } else if (cov.level === 'warn') {
-      var msg = '<b>ไฟล์ LR010 ครอบคลุม ' + L.fmtDate(cov.range.from) + ' – ' + L.fmtDate(cov.range.to) +
-        ' · งวดที่เลือก ' + L.fmtDate(cov.periodFrom) + ' – ' + L.fmtDate(cov.periodTo) + '</b><br>';
+      var msg = '<b>ไฟล์ LR010 มีงานที่ปฏิบัติงานระหว่าง ' + L.fmtDate(cov.range.from) + ' – ' +
+        L.fmtDate(cov.range.to) + ' · งวดที่เลือก ' + L.fmtDate(cov.periodFrom) + ' – ' +
+        L.fmtDate(cov.periodTo) + '</b><br>';
       if (cov.startsAtOrBefore) {
         msg += 'งานที่เปิดก่อน ' + L.fmtDate(cov.range.from) +
           ' แต่ปฏิบัติงานแล้วเสร็จในงวดนี้ จะไม่อยู่ในไฟล์เลย ระบบจึงตรวจไม่พบว่าขาด — ' +
           'ควร export LR010 ใหม่โดยขยายช่วงย้อนหลังอย่างน้อย 1–2 เดือน';
       }
       if (cov.endsAfter) {
-        msg += (cov.startsAtOrBefore ? '<br>' : '') + 'งวดที่เลือกเลยวันสุดท้ายของไฟล์ (' +
+        msg += (cov.startsAtOrBefore ? '<br>' : '') + 'งวดที่เลือกเลยวันเปิดงานล่าสุดในไฟล์ (' +
           L.fmtDate(cov.range.to) + ') ข้อมูลปลายงวดอาจไม่ครบ';
       }
       cb.innerHTML = '<div class="banner warn" style="margin-top:12px;margin-bottom:0">' + msg + '</div>';
     } else {
       cb.innerHTML = '<div class="banner ok" style="margin-top:12px;margin-bottom:0">' +
-        'ไฟล์ LR010 ครอบคลุม ' + L.fmtDate(cov.range.from) + ' – ' + L.fmtDate(cov.range.to) +
-        ' — กว้างกว่างวดที่เลือกทั้งสองด้าน ครอบคลุมงานค้างข้ามเดือนแล้ว</div>';
+        'ไฟล์ LR010 มีงานที่ปฏิบัติงานระหว่าง ' + L.fmtDate(cov.range.from) + ' – ' +
+        L.fmtDate(cov.range.to) + ' — จึงครอบคลุมงานค้างข้ามเดือนแล้ว</div>';
     }
 
     var cells = [
