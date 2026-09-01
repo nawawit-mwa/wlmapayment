@@ -758,8 +758,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     /* ---- หัวเอกสาร ---- */
     var metaRows = [
-      ['วันที่เริ่มต้น', header.dateFrom],
-      ['วันที่สิ้นสุด', header.dateTo],
+      ['วันที่ปฏิบัติงานแล้วเสร็จ จาก', header.dateFrom],
+      ['วันที่ปฏิบัติงานแล้วเสร็จ ถึง', header.dateTo],
       ['เลขที่สัญญา', header.contract],
       ['หมายเหตุ', header.note || '']
     ];
@@ -983,23 +983,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     kv('งวดงาน (วันที่ปฏิบัติงานแล้วเสร็จ)', periodLabel(plan), { bold: true });
     kv('โซนที่พบข้อมูลใน LR010', plan.zones.length ? plan.zones.join(', ') : '—');
     kv('จำนวนงาน (job) ที่นับได้', plan.jobCount);
-    kv('รายการ LR010 ที่ใช้ (ปิดงาน + ค่างาน + อยู่ในงวด)', plan.usedRows,
-      { note: 'จากทั้งหมด ' + plan.totalRows + ' รายการ' });
-    var cov = plan.coverage;
-    kv('ช่วงวันที่ที่ไฟล์ LR010 ครอบคลุม',
-      cov && cov.range ? fmtDate(cov.range.from) + '  ถึง  ' + fmtDate(cov.range.to) : 'อ่านจากหัวรายงานไม่ได้',
-      cov && cov.level === 'warn'
-        ? { fill: 'FFFFF6D6', note: 'งวดที่เลือกเลยขอบของไฟล์ — งานค้างข้ามเดือนอาจไม่อยู่ในไฟล์นี้' }
-        : {});
-    if (cov && cov.level === 'warn') {
-      kv('', (cov.startsAtOrBefore ? 'งานที่เปิดก่อน ' + fmtDate(cov.range.from) +
-        ' แต่ปฏิบัติงานแล้วเสร็จในงวดนี้ จะไม่อยู่ในไฟล์ ทำให้เบิกขาดโดยระบบตรวจไม่พบ — ' +
-        'ควร export LR010 ใหม่โดยขยายช่วงย้อนหลังอย่างน้อย 1-2 เดือน. ' : '') +
-        (cov.endsAfter ? 'งวดที่เลือกเลยวันสุดท้ายของไฟล์ (' + fmtDate(cov.range.to) +
-        ') ข้อมูลปลายงวดอาจไม่ครบ' : ''), { fill: 'FFFFF6D6' });
-    }
-    kv('ตัดออก: ปฏิบัติงานแล้วเสร็จนอกงวด', plan.excluded.outOfRange.rows + ' รายการ / ' +
-      plan.excluded.outOfRange.jobs + ' job', { note: 'ยอด ' + plan.excluded.outOfRange.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท' });
     if (plan.excluded.noDate.rows) {
       kv('ตัดออก: ไม่มีวันที่ปฏิบัติงานแล้วเสร็จ', plan.excluded.noDate.rows + ' รายการ / ' +
         plan.excluded.noDate.jobs + ' job', { note: 'ยอด ' + plan.excluded.noDate.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท', fill: 'FFFFF6D6' });
@@ -1014,15 +997,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     title('ตรวจสอบยอดรวม — LR010 เทียบกับชีต ' + SHEET1);
     var rLR = kv('ก. ยอดค่างานรวมจาก LR010', plan.lrTotal, { money: true, bold: true, note: 'ทุกแถวที่ผ่านตัวกรอง' });
     var rUn = kv('ข. ยอดที่จับคู่กับแม่แบบไม่ได้', plan.unmatchedTotal, { money: true, note: plan.unmatched.length + ' แถว (ดูรายการด้านล่าง)' });
-    var rExp = rowAt;
-    (function () {
-      var r = ws.getRow(rowAt++);
-      r.getCell(1).value = 'ค. ยอดที่ควรปรากฏใน ' + SHEET1 + ' (ก − ข)';
-      r.getCell(1).font = { name: FONT, size: 11 };
-      var c = r.getCell(2);
-      c.value = { formula: 'B' + rLR + '-B' + rUn };
-      money(c, plan.lrTotal - plan.unmatchedTotal); c.font = { name: FONT, size: 11, bold: true };
-    })();
     var rAct = rowAt;
     (function () {
       var r = ws.getRow(rowAt++);
@@ -1033,19 +1007,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       money(c, plan.matchedTotal); c.font = { name: FONT, size: 11, bold: true };
       r.getCell(3).value = 'อ่านสดจากชีตจริง — แก้ตัวเลขในชีตแล้วค่านี้ขยับตาม';
       r.getCell(3).font = { name: FONT, size: 10, italic: true, color: { argb: 'FF888888' } };
-    })();
-    var rDiff = rowAt;
-    (function () {
-      var r = ws.getRow(rowAt++);
-      r.getCell(1).value = 'ผลต่าง (ง − ค)';
-      r.getCell(1).font = { name: FONT, size: 12, bold: true };
-      var c = r.getCell(2);
-      c.value = { formula: 'B' + rAct + '-B' + rExp };
-      money(c, 0); c.font = { name: FONT, size: 12, bold: true };
-      var v = r.getCell(3);
-      v.value = { formula: 'IF(ROUND(B' + rDiff + ',2)=0,"✓ ยอดตรงกัน","✗ ยอดไม่ตรง — ตรวจสอบ")' };
-      v.font = { name: FONT, size: 12, bold: true };
-      ws.mergeCells(r.number, 3, r.number, 5);
     })();
     blank();
     var prep = catRange['1'];
@@ -1058,27 +1019,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     /* --- แยกรายหมวด --- */
     title('ยอดรวมแยกรายหมวด');
-    tableHead(['ชื่อหมวด', 'ยอดจาก LR010', 'ยอดใน ' + SHEET1, 'ผลต่าง']);
+    tableHead(['ชื่อหมวด', 'ยอดใน ' + SHEET1]);
     boq.cats.forEach(function (cat) {
       var r = tall(ws.getRow(rowAt++));
       r.getCell(1).value = boq.catName[cat] || '';
       r.getCell(1).alignment = { vertical: 'middle', wrapText: false };
-      var cLR = r.getCell(2);
-      cLR.value = plan.byCat[cat] || 0; money(cLR, cLR.value);
-      var cSheet = r.getCell(3);
+      var cSheet = r.getCell(2);
       var rng = catRange[cat];
       cSheet.value = { formula: rng ? 'SUM(' + REF + '$L$' + rng[0] + ':$L$' + rng[1] + ')' : '0' };
       money(cSheet, plan.byCat[cat] || 0);
-      var cD = r.getCell(4);
-      cD.value = { formula: 'C' + r.number + '-B' + r.number };
-      money(cD, 0);
-      for (var c3 = 1; c3 <= 4; c3++) {
+      for (var c3 = 1; c3 <= 2; c3++) {
         r.getCell(c3).font = { name: FONT, size: 11 };
         r.getCell(c3).border = allBorder('FFD3DBDF');
         if (c3 > 1) r.getCell(c3).alignment = { vertical: 'middle' };
-      }
-      if (cat === '1') {
-        r.getCell(4).font = { name: FONT, size: 11, color: { argb: 'FFB07000' } };
       }
     });
     blank();
