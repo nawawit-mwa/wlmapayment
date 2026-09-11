@@ -230,8 +230,10 @@ footer{margin-top:26px;font-size:12.5px;color:var(--ink-2);text-align:center}
     <div class="stats" id="stats"></div>
     <div class="row" style="margin-bottom:10px;justify-content:center;text-align:center">
       <button class="primary" id="btnExport">บันทึกไฟล์ Excel</button>
+      <button id="btnJobs">สรุปรายการงาน</button>
       <label class="chk"><input type="checkbox" id="chkAll"> แสดงทุกบรรทัด (รวมรายการที่ไม่มีข้อมูล)</label>
       <span class="msg" id="exportMsg"></span>
+      <span class="msg" id="jobsMsg"></span>
     </div>
     <div class="tblwrap">
       <table id="preview"><thead></thead><tbody></tbody></table>
@@ -2134,6 +2136,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     e.classList.add('hide');
 
+    state.periodOpts = opts;
     state.plan = L.buildPlan(state.boq, state.lr, opts);
     state.plan.contractMatched = !!state.matched;
     $('cardResult').classList.remove('hide');
@@ -2336,6 +2339,153 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }, 30);
   });
 
+
+
+  /* ============================================================
+     สรุปรายการงานตามงวด — ลำดับ / เลขที่งาน / วันที่แล้วเสร็จ / สถานะ / ค่างาน / ค่าวัสดุ
+     นับทุกสถานะและทุกประเภทค่าใช้จ่าย ไม่ได้กรองเหมือนตารางเบิก
+     ============================================================ */
+
+  function collectJobs() {
+    var o = state.periodOpts || {};
+    var contract = o.contract;
+    var monthSet = null;
+    if (o.periodMonths && o.periodMonths.length) {
+      monthSet = {};
+      o.periodMonths.forEach(function (m) { monthSet[String(m)] = 1; });
+    }
+    var jobs = {}, order = [], other = { n: 0, amount: 0 }, minD = null, maxD = null;
+
+    state.lr.records.forEach(function (rec) {
+      if (contract && rec.contract !== contract) return;
+      var d = L.dateSortable(rec.fieldEnd);
+      if (d === null) return;
+      if (monthSet) { if (!monthSet[String(Math.floor(d / 100))]) return; }
+      else if (o.periodFrom !== undefined && o.periodFrom !== null) {
+        if (d < o.periodFrom || d > o.periodTo) return;
+      }
+      if (minD === null || d < minD) minD = d;
+      if (maxD === null || d > maxD) maxD = d;
+
+      var key = rec.job || '(ไม่ระบุเลขที่งาน)';
+      var j = jobs[key];
+      if (!j) { j = jobs[key] = { job: key, end: d, endText: rec.fieldEnd, status: [], work: 0, material: 0 }; order.push(j); }
+      if (d > j.end) { j.end = d; j.endText = rec.fieldEnd; }
+      if (rec.status && j.status.indexOf(rec.status) < 0) j.status.push(rec.status);
+
+      if (rec.type === 'ค่างาน') j.work += rec.amount;
+      else if (rec.type.indexOf('วัสดุ') >= 0) j.material += rec.amount;
+      else { other.n++; other.amount += rec.amount; }
+    });
+
+    order.sort(function (a, b) { return a.end - b.end || (a.job < b.job ? -1 : 1); });
+    return { jobs: order, other: other, minD: minD, maxD: maxD, contract: contract };
+  }
+
+  function jobsWorkbook(sum) {
+    var BRAND = 'FF2E6E7E', LINE = 'FFD8E0E3', ZEBRA = 'FFF7FAFB';
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'P1generator';
+    var ws = wb.addWorksheet('สรุปรายการงาน', {
+      views: [{ state: 'frozen', ySplit: 4 }],
+      pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+    });
+    ws.columns = [{ width: 8 }, { width: 22 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
+
+    var period = 'ช่วงวันที่ ' + (sum.minD ? L.fmtDate(sum.minD) : '-') +
+      ' ถึง ' + (sum.maxD ? L.fmtDate(sum.maxD) : '-');
+    ws.getCell('A1').value = 'สรุปรายการงาน ' + period;
+    ws.getCell('A1').font = { bold: true, size: 14 };
+    ws.mergeCells('A1:G1');
+    ws.getCell('A2').value = 'สัญญา ' + (sum.contract || '-') + '  ·  ' + sum.jobs.length + ' งาน' +
+      '  ·  อ้างอิงวันที่ปฏิบัติงานแล้วเสร็จ';
+    ws.getCell('A2').font = { size: 10.5, color: { argb: 'FF5A6B72' } };
+    ws.mergeCells('A2:G2');
+    ws.getRow(1).height = 22; ws.getRow(2).height = 16;
+
+    var head = ws.getRow(4);
+    ['ลำดับ', 'เลขที่งาน', 'วันที่แล้วเสร็จ', 'สถานะงาน', 'ค่างาน', 'ค่าวัสดุ', 'รวม']
+      .forEach(function (t, i) { head.getCell(i + 1).value = t; });
+    head.height = 24;
+    for (var i = 1; i <= 7; i++) {
+      var hc = head.getCell(i);
+      hc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+      hc.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      hc.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+
+    function edge(row, n) {
+      for (var k = 1; k <= n; k++) {
+        row.getCell(k).border = {
+          top: { style: 'thin', color: { argb: LINE } }, bottom: { style: 'thin', color: { argb: LINE } },
+          left: { style: 'thin', color: { argb: LINE } }, right: { style: 'thin', color: { argb: LINE } }
+        };
+      }
+    }
+    edge(head, 7);
+
+    var totW = 0, totM = 0;
+    sum.jobs.forEach(function (j, idx) {
+      var r = ws.addRow([idx + 1, j.job, j.endText, j.status.join(' / '), j.work, j.material, j.work + j.material]);
+      totW += j.work; totM += j.material;
+      r.height = 17;
+      r.getCell(1).alignment = { horizontal: 'center' };
+      r.getCell(3).alignment = { horizontal: 'center' };
+      r.getCell(4).alignment = { horizontal: 'center' };
+      for (var c = 5; c <= 7; c++) { r.getCell(c).numFmt = '#,##0.00'; r.getCell(c).alignment = { horizontal: 'right' }; }
+      if (idx % 2 === 1) {
+        for (var c2 = 1; c2 <= 7; c2++) r.getCell(c2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZEBRA } };
+      }
+      edge(r, 7);
+    });
+
+    var tr = ws.addRow(['', 'รวมทั้งสิ้น', '', '', totW, totM, totW + totM]);
+    tr.height = 20;
+    for (var c3 = 1; c3 <= 7; c3++) {
+      tr.getCell(c3).font = { bold: true };
+      tr.getCell(c3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6EA' } };
+    }
+    for (var c4 = 5; c4 <= 7; c4++) { tr.getCell(c4).numFmt = '#,##0.00'; tr.getCell(c4).alignment = { horizontal: 'right' }; }
+    tr.getCell(2).alignment = { horizontal: 'right' };
+    edge(tr, 7);
+
+    if (sum.other.n) {
+      var nr = ws.addRow(['', 'มีรายการประเภทอื่นที่ไม่ใช่ค่างาน/ค่าวัสดุ อีก ' + sum.other.n +
+        ' รายการ รวม ' + fmt(sum.other.amount) + ' บาท (ไม่ได้นับในตารางนี้)']);
+      nr.getCell(2).font = { italic: true, color: { argb: 'FFB4443C' } };
+      ws.mergeCells('B' + nr.number + ':G' + nr.number);
+    }
+
+    ws.autoFilter = { from: 'A4', to: 'G4' };
+    return wb;
+  }
+
+  $('btnJobs').addEventListener('click', function () {
+    var btn = this;
+    if (!state.plan || !state.lr) return;
+    $('exportMsg').textContent = '';
+    var msg = $('jobsMsg');
+    msg.className = 'msg';
+    var sum = collectJobs();
+    if (!sum.jobs.length) {
+      msg.innerHTML = '<span class="err">ไม่พบรายการงานในงวดที่เลือก</span>';
+      return;
+    }
+    btn.disabled = true;
+    msg.textContent = 'กำลังสร้างไฟล์…';
+    var d = new Date(), pad = function (n) { return ('0' + n).slice(-2); };
+    var name = 'JOBS_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.xlsx';
+    jobsWorkbook(sum).xlsx.writeBuffer().then(function (buf) {
+      btn.disabled = false;
+      saveBlob(buf, name);
+      msg.innerHTML = 'บันทึกแล้ว: ' + esc(name) + ' · ' + sum.jobs.length + ' งาน' +
+        (sum.other.n ? ' · <span class="err">มีรายการประเภทอื่นอีก ' + sum.other.n + ' รายการที่ไม่ได้นับ</span>' : '');
+    }).catch(function (e) {
+      btn.disabled = false;
+      msg.innerHTML = '<span class="err">สร้างไฟล์ไม่สำเร็จ: ' + esc(e.message) + '</span>';
+    });
+  });
 
 })();
 </script>
