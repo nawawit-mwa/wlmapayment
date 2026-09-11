@@ -93,7 +93,7 @@ td.kw{font-size:11px;color:#9aa3a8;text-align:center;white-space:nowrap}
 #tblContracts tbody tr.on td{background:#dce6ea;font-weight:600}
 #tblContracts td{vertical-align:middle;padding:6px 8px}
 #tblContracts td.act{text-align:right;white-space:nowrap}
-#tblContracts button{padding:3px 10px;font-size:13px}
+#tblContracts button{padding:3px 10px;font-size:13px;margin-left:6px}
 .tag-ok{color:var(--ok);font-weight:600}
 .tag-no{color:var(--bad);font-weight:600}
 .tag-dim{color:var(--ink-2)}
@@ -1602,7 +1602,151 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var tr = rowOf(c);
     if (!tr) return;
     tr.cells[1].innerHTML = statusTag(c);
-    tr.cells[2].firstChild.textContent = btnLabel(c);
+    renderActions(tr.cells[2], c);
+  }
+
+  function renderActions(td, c) {
+    td.innerHTML = '';
+    if (inStore(c)) {
+      var dl = document.createElement('button');
+      dl.textContent = 'ดาวน์โหลด';
+      dl.title = 'ดาวน์โหลดแม่แบบ BOQ ที่อยู่ในคลังไว้ตรวจสอบ';
+      dl.onclick = function (ev) { ev.stopPropagation(); downloadTemplate(c, dl); };
+      td.appendChild(dl);
+    }
+    var up = document.createElement('button');
+    up.textContent = btnLabel(c);
+    up.onclick = function (ev) {
+      ev.stopPropagation();
+      state.upTarget = c;
+      if ($('selContract').value !== c) selectContract(c);
+      $('inBOQ').click();
+    };
+    td.appendChild(up);
+  }
+
+  function downloadTemplate(c, btn) {
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'กำลังดึง…';
+    upMsg('');
+    S.fetchContract(c, function (err, res) {
+      if (err) {
+        btn.disabled = false; btn.textContent = label;
+        return upMsg('ดาวน์โหลดไม่สำเร็จ: ' + esc(err.message), true);
+      }
+      btn.textContent = 'กำลังสร้างไฟล์…';
+      var name = dlName(c);
+      templateWorkbook(res, c).xlsx.writeBuffer().then(function (buf) {
+        btn.disabled = false; btn.textContent = label;
+        saveBlob(buf, name);
+        upMsg('<span class="ok">บันทึกแล้ว: ' + esc(name) + '</span>' +
+          (res.sourceFile ? ' · ไฟล์ต้นทางในคลังคือ ' + esc(res.sourceFile) : '') +
+          (res.source === 'cache' ? ' · <span class="err">เป็นสำเนาในเครื่อง ไม่ใช่ของสดจากคลัง</span>' : ''));
+      }).catch(function (e) {
+        btn.disabled = false; btn.textContent = label;
+        upMsg('สร้างไฟล์ไม่สำเร็จ: ' + esc(e.message), true);
+      });
+    });
+  }
+
+  // ชื่อไฟล์ต้องเป็น ASCII ล้วน มิฉะนั้น Chromium จะทิ้งชื่อทั้งหมดเมื่อเปิดแบบ file://
+  function dlName(c) {
+    var ascii = String(c).replace(/[^\x20-\x7E]/g, '').replace(/[^\w.\-]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return 'BOQ_' + (ascii || 'template') + '.xlsx';
+  }
+
+  function saveBlob(buf, name) {
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+
+  /* แม่แบบที่ดาวน์โหลด: จัดรูปแบบให้อ่านง่าย แต่คงตำแหน่งเซลล์เดิมทุกช่อง
+     เพื่อให้แก้ราคาแล้วอัปโหลดกลับขึ้นคลังได้ทันที */
+  function templateWorkbook(res, contract) {
+    var BRAND = 'FF2E6E7E', LINE = 'FFD8E0E3', CAT = 'FFDCE6EA', ZEBRA = 'FFF7FAFB';
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'P1generator';
+    var ws = wb.addWorksheet('BOQ', {
+      views: [{ state: 'frozen', ySplit: 5 }],
+      pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+    });
+    ws.columns = [{ width: 10 }, { width: 64 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 13 }];
+
+    var grid = res.grid || [];
+    grid.forEach(function (row) {
+      var r = (row || []).slice(0, 6);
+      while (r.length < 6) r.push('');
+      ws.addRow(r);
+    });
+
+    function edge(row) {
+      for (var i = 1; i <= 6; i++) {
+        row.getCell(i).border = {
+          top: { style: 'thin', color: { argb: LINE } }, bottom: { style: 'thin', color: { argb: LINE } },
+          left: { style: 'thin', color: { argb: LINE } }, right: { style: 'thin', color: { argb: LINE } }
+        };
+      }
+    }
+
+    // แถว 1–3 ข้อมูลหัวไฟล์
+    [1, 2, 3].forEach(function (n) {
+      var row = ws.getRow(n);
+      row.getCell(1).font = { bold: true, color: { argb: 'FF5A6B72' } };
+      row.getCell(2).font = { bold: n === 3, size: n === 3 ? 12 : 11 };
+      row.height = 18;
+    });
+    ws.getCell('D3').value = 'ไฟล์ต้นทางในคลัง: ' + (res.sourceFile || '(ไม่ระบุ)') +
+      (res.updatedAt ? '  ·  อัปเดต ' + fmtWhen(res.updatedAt) : '');
+    ws.getCell('D3').font = { italic: true, size: 9.5, color: { argb: 'FF7A8A90' } };
+
+    // แถว 5 หัวตาราง
+    var head = ws.getRow(5);
+    head.height = 24;
+    for (var i = 1; i <= 6; i++) {
+      var cell = head.getCell(i);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.alignment = { horizontal: i === 2 ? 'left' : 'center', vertical: 'middle' };
+    }
+    edge(head);
+
+    // แถวข้อมูล
+    var zebra = 0;
+    for (var n = 6; n <= grid.length; n++) {
+      var row = ws.getRow(n);
+      var isLeaf = String(row.getCell(6).value == null ? '' : row.getCell(6).value).trim() !== '';
+      row.height = 17;
+      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      row.getCell(2).alignment = { vertical: 'middle' };          // คงช่องว่างนำหน้าไว้ ห้ามตัด
+      row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+      for (var c2 = 3; c2 <= 5; c2++) {
+        row.getCell(c2).numFmt = '#,##0.00';
+        row.getCell(c2).alignment = { horizontal: 'right', vertical: 'middle' };
+      }
+      if (isLeaf) {
+        zebra++;
+        if (zebra % 2 === 0) {
+          for (var c3 = 1; c3 <= 6; c3++) {
+            row.getCell(c3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZEBRA } };
+          }
+        }
+      } else {
+        for (var c4 = 1; c4 <= 6; c4++) {
+          row.getCell(c4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CAT } };
+          row.getCell(c4).font = { bold: true };
+        }
+      }
+      edge(row);
+    }
+
+    ws.autoFilter = { from: 'A5', to: 'F5' };
+    return wb;
   }
 
   function refreshAllRows() {
@@ -1638,15 +1782,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       td2.innerHTML = statusTag(c);
       var td3 = document.createElement('td');
       td3.className = 'act';
-      var btn = document.createElement('button');
-      btn.textContent = btnLabel(c);
-      btn.onclick = function (ev) {
-        ev.stopPropagation();
-        state.upTarget = c;
-        if ($('selContract').value !== c) selectContract(c);
-        $('inBOQ').click();
-      };
-      td3.appendChild(btn);
+      renderActions(td3, c);
 
       tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
       tr.onclick = function () { if ($('selContract').value !== c) selectContract(c); };
@@ -1693,9 +1829,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     state.boqContract = c;
     state.matched = true;
     resetBOQ();
-
     state.upTarget = c;
     markSelected(c);
+
     var hit = inStore(c);
     if (hit === false) {
       boqStatus('<span class="err">ยังไม่มีแม่แบบ BOQ ของสัญญานี้ในคลัง</span> — อัปโหลดไฟล์ BOQ ' +
@@ -1709,13 +1845,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (err) {
         boqStatus('<span class="err">ดึงแม่แบบจากคลังไม่สำเร็จ: ' + esc(err.message) +
           '</span> — อัปโหลดไฟล์ BOQ ของสัญญานี้เองแทนได้', '');
-          return;
+        return;
       }
       var boq;
       try { boq = L.parseBOQTemplate(res.grid); }
       catch (e) {
         boqStatus('<span class="err">แม่แบบในคลังอ่านไม่ได้: ' + esc(e.message) + '</span>', '');
-          return;
+        return;
       }
       useBOQ(boq, 'คลัง BOQ', res.sourceFile || '', res.updatedAt || '', res.source === 'cache');
     });
@@ -1767,7 +1903,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           (res.replaced ? ' (ทับของเดิม)' : ' (สร้างใหม่)'));
         if (state.index) state.index[S.norm(contract)] = { contract: contract, updatedAt: res.updatedAt, rows: res.rows };
         refreshAllRows();
-          });
+      });
   }
 
   function useBOQ(boq, srcLabel, srcFile, updatedAt, fromCache) {
