@@ -88,13 +88,15 @@
   .pill.bad{background:var(--bad-bg);color:var(--bad)}
   .empty{padding:30px;text-align:center;color:var(--muted)}
 
-  .clist{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+  .clist{display:flex;flex-direction:column;gap:10px}
   .citem{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff;cursor:pointer}
   .citem:hover{border-color:var(--brand);box-shadow:0 2px 10px rgba(21,80,143,.09)}
   .citem.on{border-color:var(--brand);background:var(--brand-soft)}
-  .citem b{display:block;font-size:14.5px}
-  .citem span{display:block;color:var(--muted);font-size:12.5px;margin-top:2px;
+  .citem{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .citem b{font-size:15px;min-width:130px}
+  .citem .job{flex:1;min-width:200px;color:var(--muted);font-size:13px;
               overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .citem .tags{display:flex;gap:5px;flex-wrap:wrap}
 
   /* ---------- P-2 ---------- */
   .p2head{text-align:center;margin-bottom:12px}
@@ -123,7 +125,7 @@
     <div class="sub">จัดเก็บ P-1 รายงวด · สรุปค่างานสะสม</div>
   </div>
   <nav>
-    <button data-p="contracts" class="on">สัญญา</button>
+    <button data-p="contracts" class="on">แสดงรายการสัญญา</button>
     <button data-p="import">นำเข้า P1</button>
     <button data-p="p2">แบบฟอร์ม P-2</button>
     <button data-p="setup"><span class="dot" id="dot"></span>ตั้งค่า</button>
@@ -167,21 +169,21 @@
 <section class="page on" id="pg-contracts">
   <div class="card">
     <div class="row">
-      <div>
-        <h2>สัญญาทั้งหมด</h2>
-        <div class="hint" style="margin:0">แต่ละสัญญาเก็บเป็น 1 แท็บในไฟล์ Google Sheets เดียวกัน</div>
-      </div>
+      <h2>สัญญาทั้งหมด</h2>
       <div class="spacer"></div>
       <button class="btn" id="btnReload">โหลดใหม่</button>
-      <button class="btn p" id="btnNew">+ เปิดสัญญาใหม่</button>
+      <button class="btn p" id="btnNew">+ สร้างสัญญาใหม่</button>
     </div>
+    <div id="listMsg"></div>
     <div id="clist" style="margin-top:14px"><div class="empty">ยังไม่ได้เชื่อมต่อ — ไปที่แท็บ “ตั้งค่า”</div></div>
   </div>
 
   <!-- เปิดสัญญาใหม่ -->
   <div class="card" id="newBox" style="display:none">
-    <h2>เปิดสัญญาใหม่ — อัปโหลดแม่แบบ BOQ</h2>
-    <div class="hint">ไฟล์ <b>Temp_BOQ_WLMAPro_*.xls</b> ของสัญญานั้น (ไฟล์เดียวกับที่ใช้กับ P1generator)
+    <h2>1. สร้างสัญญาใหม่</h2>
+    <div class="hint">กรุณาอัปโหลดแม่แบบ BOQ และกรอกรายละเอียดสัญญา
+      เพื่อสร้างไฟล์ P2_BOQ ไว้กรอกจำนวน “เงินตามสัญญา”<br>
+      ไฟล์ที่ใช้คือ <b>Temp_BOQ_WLMAPro_*.xls</b> ของสัญญานั้น (ไฟล์เดียวกับที่ใช้กับ P1generator)
       ระบบอ่านเลขที่สัญญาและหมวดทั้งหมดให้เอง</div>
     <label class="drop"><input type="file" id="boqFile" accept=".xls,.xlsx">
       <span id="boqText">คลิกเลือกไฟล์แม่แบบ BOQ หรือลากมาวาง</span></label>
@@ -219,6 +221,7 @@
     <div class="row">
       <h2 id="detTitle"></h2>
       <div class="spacer"></div>
+      <button class="btn d" id="btnDelContract">ลบสัญญานี้</button>
       <button class="btn" id="btnDetClose">ปิด</button>
     </div>
     <div class="grid g4" style="margin-top:12px">
@@ -228,12 +231,13 @@
       <div><label class="f">วันที่บนหัวเอกสาร</label><input type="text" id="dDate"></div>
     </div>
     <div style="margin-top:10px"><label class="f">ชื่องาน</label><input type="text" id="dJob"></div>
-    <div style="margin-top:12px"><label class="f">ตัวคูณหมวด 1</label>
+    <!-- ซ่อนไว้ก่อนตามที่สั่ง — ค่ายังถูกส่งไปบันทึกตามเดิม -->
+    <div style="margin-top:12px;display:none"><label class="f">ตัวคูณหมวด 1</label>
       <div class="grid g4" id="dMults"></div></div>
 
-    <h3 style="margin:16px 0 4px;font-size:14px">เงินตามสัญญา รายหมวด</h3>
-    <div class="hint">วิธีหลัก: <b>ดาวน์โหลด P2_BOQ</b> → กรอกคอลัมน์ “เงินตามสัญญา” ใน Excel →
-      <b>อัปโหลดกลับ</b> · หรือจะพิมพ์ในตารางข้างล่างทีละช่องก็ได้</div>
+    <h3 style="margin:16px 0 4px;font-size:15px">2. กรอกเงินตามสัญญา รายหมวด</h3>
+    <div class="hint">ขั้นตอน : <b>ดาวน์โหลด P2_BOQ</b> และตรวจสอบ ITEM ที่ต้องใช้ทั้งหมด (เพิ่มเติมได้)
+      → กรอกคอลัมน์ “เงินตามสัญญา” ใน Excel → <b>อัปโหลดกลับ</b> → ตรวจสอบตามรายการข้างล่าง</div>
     <div class="row" style="margin-bottom:10px">
       <button class="btn" id="btnBoqDown">⭳ ดาวน์โหลด P2_BOQ</button>
       <label class="btn" style="display:inline-block;margin:0">⭱ อัปโหลด P2_BOQ ที่กรอกแล้ว
@@ -484,11 +488,11 @@ function renderContracts() {
     var warn = c.missingBudget ? '<span class="pill bad">ยังไม่กรอกเงินตามสัญญา ' + c.missingBudget + ' หมวด</span>' : '';
     return '<div class="citem" data-i="' + i + '">' +
       '<b>' + esc(c.contract) + '</b>' +
-      '<span>' + esc(c.job || '—') + '</span>' +
-      '<div style="margin-top:7px;display:flex;gap:5px;flex-wrap:wrap">' +
+      '<span class="job">' + esc(c.job || '—') + '</span>' +
+      '<span class="tags">' +
         '<span class="pill">' + c.items + ' หมวด</span>' +
         '<span class="pill">' + (c.nguads.length ? 'งวด ' + c.nguads.join(', ') : 'ยังไม่มีงวด') + '</span>' +
-        warn + '</div></div>';
+        warn + '</span></div>';
   }).join('') + '</div>';
   [].slice.call(document.querySelectorAll('.citem')).forEach(function (el) {
     el.onclick = function () { openDetail(CONTRACTS[+el.dataset.i]); };
@@ -499,13 +503,23 @@ function renderContracts() {
    เปิดสัญญาใหม่
    ========================================================================= */
 $('btnNew').onclick = function () {
+  $('detBox').style.display = 'none'; DET = null;
+  clearMsg('listMsg');
   $('newBox').style.display = 'block';
   $('newBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
-$('btnNewCancel').onclick = function () {
-  $('newBox').style.display = 'none'; $('boqForm').style.display = 'none';
-  $('boqText').textContent = 'คลิกเลือกไฟล์แม่แบบ BOQ หรือลากมาวาง'; clearMsg('newMsg'); BOQ = null;
-};
+function closeNewBox() {
+  $('newBox').style.display = 'none';
+  $('boqForm').style.display = 'none';
+  $('boqFile').value = '';
+  $('boqText').textContent = 'คลิกเลือกไฟล์แม่แบบ BOQ หรือลากมาวาง';
+  $('btnCreate').textContent = 'สร้างสัญญา';
+  ['nJob', 'nDate', 'nInsp', 'nInspPos'].forEach(function (id) { $(id).value = ''; });
+  $('nRate').value = 10;
+  clearMsg('newMsg');
+  BOQ = null;
+}
+$('btnNewCancel').onclick = function () { closeNewBox(); clearMsg('listMsg'); };
 $('boqFile').onchange = function (e) { if (e.target.files[0]) loadBoq(e.target.files[0]); };
 bindDrop($('boqFile').parentNode, function (fs) { if (fs[0]) loadBoq(fs[0]); });
 
@@ -571,11 +585,13 @@ $('btnCreate').onclick = function () {
   var b = $('btnCreate'); b.disabled = true; b.textContent = 'กำลังสร้าง…';
   api('createContract', cfg).then(function (res) {
     b.disabled = false; b.textContent = 'สร้างสัญญา';
-    say('newMsg', 'ok', res.mode === 'create'
+    closeNewBox();
+    say('listMsg', 'ok', res.mode === 'create'
       ? 'สร้างสัญญา <b>' + esc(cfg.contract) + '</b> แล้ว (' + res.rows + ' หมวด)<br>' +
-        'ขั้นต่อไป: <b>คลิกการ์ดสัญญาด้านบนของหน้าจอ</b> → กด <b>ดาวน์โหลด P2_BOQ</b> ' +
+        'ขั้นต่อไป: <b>คลิกการ์ดสัญญาในรายการข้างล่าง</b> → กด <b>ดาวน์โหลด P2_BOQ</b> ' +
         'ไปกรอกเงินตามสัญญาใน Excel → แล้ว <b>อัปโหลดกลับ</b>'
-      : 'อัปเดตแล้ว — เพิ่มใหม่ ' + res.added + ' หมวด · เดิม ' + res.kept + ' หมวด');
+      : 'อัปเดตสัญญา <b>' + esc(cfg.contract) + '</b> แล้ว — เพิ่มใหม่ ' + res.added +
+        ' หมวด · เดิม ' + res.kept + ' หมวด');
     loadContracts();
   }).catch(function (e) {
     b.disabled = false; b.textContent = 'สร้างสัญญา';
@@ -588,12 +604,42 @@ $('btnCreate').onclick = function () {
    ========================================================================= */
 $('btnDetClose').onclick = function () { $('detBox').style.display = 'none'; DET = null; };
 
+$('btnDelContract').onclick = function () {
+  if (!DET) return;
+  var rec = null;
+  for (var i = 0; i < CONTRACTS.length; i++) if (CONTRACTS[i].contract === DET.contract) rec = CONTRACTS[i];
+  var nd = (rec && rec.nguads) || [];
+  var warn = 'ลบสัญญา ' + DET.contract + ' ออกจากระบบ?\n\n' +
+    (nd.length ? '⚠ สัญญานี้มีข้อมูลงวด ' + nd.join(', ') + ' — จะถูกลบไปด้วยทั้งหมด\n' : '') +
+    'แท็บใน Google Sheets จะถูกลบ และย้อนกลับไม่ได้';
+  if (!confirm(warn)) return;
+  var typed = prompt('พิมพ์เลขที่สัญญาให้ตรงเพื่อยืนยันการลบ:', '');
+  if (typed === null) return;
+  if (String(typed).trim() !== DET.contract) {
+    say('detMsg', 'warn', 'ยกเลิกการลบ — เลขที่สัญญาที่พิมพ์ไม่ตรง');
+    return;
+  }
+  var b = $('btnDelContract'); b.disabled = true; b.textContent = 'กำลังลบ…';
+  var name = DET.contract;
+  api('deleteContract', { contract: name }).then(function () {
+    b.disabled = false; b.textContent = 'ลบสัญญานี้';
+    $('detBox').style.display = 'none'; DET = null; P2 = null;
+    loadContracts();
+    say('listMsg', 'ok', 'ลบสัญญา <b>' + esc(name) + '</b> แล้ว (บันทึกไว้ในแท็บ “บันทึกนำเข้า”)');
+  }).catch(function (e) {
+    b.disabled = false; b.textContent = 'ลบสัญญานี้';
+    say('detMsg', 'bad', emsg(e));
+  });
+};
+
 function openDetail(c) {
   clearMsg('detMsg');
+  closeNewBox();
+  clearMsg('listMsg');
   $('detBox').style.display = 'block';
   $('detTitle').textContent = 'สัญญา ' + c.contract;
   $('budTbl').innerHTML = '<tbody><tr><td class="empty">กำลังโหลด…</td></tr></tbody>';
-  api('readP2', { contract: c.contract }).then(function (d) {
+  return api('readP2', { contract: c.contract }).then(function (d) {
     DET = d;
     $('dRate').value = r2(d.rate * 100);
     $('dJob').value = d.job || '';
@@ -654,61 +700,104 @@ $('boqUpFile').onchange = function (e) {
   var f = e.target.files[0];
   e.target.value = '';
   readGrid(f, { type: 'array', codepage: 874 }).then(function (grid) {
-    // หาแถวหัวตาราง แล้วดูว่าคอลัมน์ "รหัส" กับ "เงินตามสัญญา" อยู่ตรงไหน
-    var hr = -1, cCode = -1, cBud = -1;
-    for (var r = 0; r < Math.min(grid.length, 20); r++) {
-      if (!grid[r]) continue;
-      for (var c = 0; c < grid[r].length; c++) {
-        var v = String(grid[r][c] || '').trim();
-        if (v === 'รหัส') cCode = c;
-        if (v.indexOf('เงินตามสัญญา') === 0) cBud = c;
-      }
-      if (cCode >= 0 && cBud >= 0) { hr = r; break; }
-      cCode = -1; cBud = -1;
+    var parsed = parseBoqUpload(grid);              // {rows:[{code,name,budget}], contract}
+    if (parsed.contract && parsed.contract !== DET.contract) {
+      throw new Error('ไฟล์นี้เป็นของสัญญา “' + parsed.contract + '” ไม่ใช่ “' + DET.contract + '”');
     }
-    if (hr < 0) throw new Error('ไม่พบหัวตาราง “รหัส” และ “เงินตามสัญญา” — ต้องใช้ไฟล์ที่ดาวน์โหลดจากปุ่มข้างบนเท่านั้น');
+    var have = {};
+    DET.items.forEach(function (x) { if (x.code) have[x.code] = true; });
+    var fresh = parsed.rows.filter(function (r) { return !have[r.code]; });
 
-    var contractInFile = '';
-    for (var m = 0; m < hr; m++) {
-      if (grid[m] && String(grid[m][0] || '').indexOf('เลขที่สัญญา') === 0) {
-        contractInFile = String(grid[m][1] || '').trim();
-      }
-    }
-    if (contractInFile && contractInFile !== DET.contract) {
-      throw new Error('ไฟล์นี้เป็นของสัญญา “' + contractInFile + '” ไม่ใช่ “' + DET.contract + '”');
-    }
+    if (!fresh.length) return applyUpload(parsed.rows, 0, parsed.bad);
 
-    var byCode = {}, nFile = 0;
-    for (var r2 = hr + 1; r2 < grid.length; r2++) {
-      if (!grid[r2]) continue;
-      var code = String(grid[r2][cCode] === null || grid[r2][cCode] === undefined ? '' : grid[r2][cCode]).trim();
-      if (!code) continue;
-      var raw = grid[r2][cBud];
-      if (raw === '' || raw === null || raw === undefined) continue;
-      var val = Number(String(raw).replace(/,/g, ''));
-      if (isNaN(val)) continue;
-      byCode[code] = val;
-      nFile++;
-    }
+    var names = fresh.slice(0, 8).map(function (r) { return r.code; }).join(', ');
+    var ask = 'ไฟล์มีรายการที่ยังไม่มีในสัญญานี้ ' + fresh.length + ' รายการ\n(' + names +
+              (fresh.length > 8 ? ', …' : '') + ')\n\nต้องการเพิ่มเข้าไปในสัญญาหรือไม่' +
+              '\n\nกด OK = เพิ่มเข้าไป · กด Cancel = ข้ามรายการเหล่านี้';
+    if (!confirm(ask)) return applyUpload(parsed.rows, 0, parsed.bad);
 
-    var applied = 0, unknown = [];
-    for (var code2 in byCode) {
-      var el = $('budTbl').querySelector('input[data-code="' + CSS.escape(code2) + '"]');
-      if (el) { el.value = byCode[code2]; applied++; }
-      else unknown.push(code2);
-    }
-    if (!applied) throw new Error('อ่านได้ ' + nFile + ' แถว แต่ไม่มีรหัสไหนตรงกับสัญญานี้เลย');
-
-    var warn = unknown.length
-      ? ' · <b>ไม่รู้จัก ' + unknown.length + ' รหัส</b> (' + esc(unknown.slice(0, 8).join(', ')) + ') ข้ามไป'
-      : '';
-    var miss = [].slice.call($('budTbl').querySelectorAll('input')).filter(function (i) { return i.value === ''; }).length;
-    $('budInfo').textContent = miss ? 'ยังไม่กรอก ' + miss + ' หมวด' : 'กรอกครบทุกหมวดแล้ว';
-    say('detMsg', unknown.length ? 'warn' : 'ok',
-      'อ่านจากไฟล์แล้ว ใส่ลงตาราง <b>' + applied + ' หมวด</b>' + warn +
-      ' — ตรวจแล้วกด <b>บันทึกทั้งหมด</b> เพื่อยืนยัน (ยังไม่บันทึกลงชีต)');
+    say('detMsg', 'ok', 'กำลังเพิ่ม ' + fresh.length + ' รายการเข้าสัญญา…');
+    return api('createContract', {
+      contract: DET.contract,
+      items: fresh.map(function (r) {
+        return { code: r.code, name: r.name,
+                 mult: (r.code.indexOf('1.') === 0 ? 1 : ''), budget: '' };
+      })
+    }).then(function () {
+      return openDetail({ contract: DET.contract });
+    }).then(function () {
+      return applyUpload(parsed.rows, fresh.length, parsed.bad);
+    }).then(function () { loadContracts(); });
   }).catch(function (err) { say('detMsg', 'bad', emsg(err)); });
 };
+
+/** อ่านไฟล์ P2_BOQ → รายการ {code, name, budget} + เลขที่สัญญาในหัวไฟล์ */
+function parseBoqUpload(grid) {
+  var hr = -1, cCode = -1, cName = -1, cBud = -1;
+  for (var r = 0; r < Math.min(grid.length, 20); r++) {
+    if (!grid[r]) continue;
+    var a = -1, b = -1, c2 = -1;
+    for (var c = 0; c < grid[r].length; c++) {
+      var v = String(grid[r][c] || '').trim();
+      if (v === 'รหัส') a = c;
+      if (v === 'รายการ' || v === 'ชื่อรายการ') c2 = c;
+      if (v.indexOf('เงินตามสัญญา') === 0) b = c;
+    }
+    if (a >= 0 && b >= 0) { hr = r; cCode = a; cBud = b; cName = c2; break; }
+  }
+  if (hr < 0) {
+    throw new Error('ไม่พบหัวตาราง “รหัส” และ “เงินตามสัญญา” — ต้องใช้ไฟล์ที่ดาวน์โหลดจากปุ่มข้างบนเท่านั้น');
+  }
+  var contract = '';
+  for (var m = 0; m < hr; m++) {
+    if (grid[m] && String(grid[m][0] || '').indexOf('เลขที่สัญญา') === 0) {
+      contract = String(grid[m][1] || '').trim();
+    }
+  }
+  var rows = [], seen = {}, bad = [];
+  for (var r2 = hr + 1; r2 < grid.length; r2++) {
+    if (!grid[r2]) continue;
+    var code = String(grid[r2][cCode] === null || grid[r2][cCode] === undefined ? '' : grid[r2][cCode]).trim();
+    if (code && !/^\d+(\.\d+)*$/.test(code)) { bad.push(code); continue; }
+    if (!code || seen[code]) continue;
+    seen[code] = true;
+    var nm = cName >= 0 ? String(grid[r2][cName] || '') : '';
+    nm = nm.replace(/^\s*\d+(\.\d+)*\.?\s*/, '').replace(/\s+/g, ' ').trim();
+    var raw = grid[r2][cBud];
+    var bud = null;
+    if (raw !== '' && raw !== null && raw !== undefined) {
+      var val = Number(String(raw).replace(/,/g, ''));
+      if (!isNaN(val)) bud = val;
+    }
+    rows.push({ code: code, name: nm || ('หมวด ' + code), budget: bud });
+  }
+  if (!rows.length) throw new Error('ไม่พบแถวรายการในไฟล์');
+  return { contract: contract, rows: rows, bad: bad };
+}
+
+/** เติมค่าที่อ่านได้ลงตาราง (ยังไม่บันทึกลงชีต) */
+function applyUpload(rows, added, bad) {
+  var applied = 0, skipped = [];
+  rows.forEach(function (r) {
+    if (r.budget === null) return;
+    var el = $('budTbl').querySelector('input[data-code="' + CSS.escape(r.code) + '"]');
+    if (el) { el.value = r.budget; applied++; }
+    else skipped.push(r.code);
+  });
+  var miss = [].slice.call($('budTbl').querySelectorAll('input')).filter(function (i) { return i.value === ''; }).length;
+  $('budInfo').textContent = miss ? 'ยังไม่กรอก ' + miss + ' หมวด' : 'กรอกครบทุกหมวดแล้ว';
+
+  var parts = [];
+  if (added) parts.push('เพิ่มรายการใหม่ <b>' + added + ' รายการ</b>');
+  parts.push('ใส่เงินตามสัญญาลงตาราง <b>' + applied + ' หมวด</b>');
+  if (skipped.length) parts.push('ข้าม ' + skipped.length + ' รหัสที่ไม่มีในสัญญา (' +
+    esc(skipped.slice(0, 8).join(', ')) + ')');
+  if (bad && bad.length) parts.push('ข้าม ' + bad.length + ' แถวที่ช่อง “รหัส” ไม่ใช่ตัวเลข (' +
+    esc(bad.slice(0, 5).join(', ')) + ')');
+  say('detMsg', (skipped.length || (bad && bad.length)) ? 'warn' : 'ok',
+    parts.join(' · ') + ' — ตรวจแล้วกด <b>บันทึกทั้งหมด</b> เพื่อยืนยัน (ยังไม่บันทึกลงชีต)');
+  return applied;
+}
 
 $('btnSaveDet').onclick = function () {
   if (!DET) return;
@@ -725,7 +814,10 @@ $('btnSaveDet').onclick = function () {
     return api('setBudget', { contract: DET.contract, budgets: budgets });
   }).then(function (res) {
     b.disabled = false; b.textContent = 'บันทึกทั้งหมด';
-    say('detMsg', 'ok', 'บันทึกแล้ว (' + res.updated + ' หมวด)');
+    var name = DET.contract;
+    $('detBox').style.display = 'none';
+    DET = null;
+    say('listMsg', 'ok', 'บันทึกข้อมูลสัญญา <b>' + esc(name) + '</b> แล้ว (' + res.updated + ' หมวด)');
     loadContracts();
   }).catch(function (e) {
     b.disabled = false; b.textContent = 'บันทึกทั้งหมด';
