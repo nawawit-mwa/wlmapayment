@@ -200,6 +200,7 @@ table.fixed{table-layout:fixed}
 .kvs b{display:block;font-size:15.5px}
 
 #dropLR .f,#dropSAP .f{word-break:normal;overflow-wrap:anywhere}
+button.mini{padding:2px 10px;font-size:12.5px;margin-left:4px}
 
 </style>
 </head>
@@ -234,7 +235,8 @@ table.fixed{table-layout:fixed}
       <span class="h2r"><button id="btnPOMap" title="ไฟล์ที่มีคอลัมน์ PO และ สัญญา เช่น PO_name.xlsx">นำเข้ารายการ PO ↔ สัญญา</button></span>
     </h2>
     <input type="file" id="inPOMap" accept=".xls,.xlsx">
-    <div id="storeMsg" class="msg" style="margin:-4px 0 8px"></div>
+    <div id="storeMsg" class="msg" style="margin:-4px 0 2px"></div>
+    <div id="brMsg" class="msg" style="margin:0 0 8px"></div>
     <div class="tblwrap" style="max-height:290px">
       <table id="tblPO" class="fixed">
         <colgroup><col style="width:15%"><col style="width:17%"><col style="width:10%"><col style="width:9%">
@@ -470,6 +472,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   var EPS = 1e-6;
 
+  /* ---------- สาขา: br_name.xlsx + cost_center.xlsx (ก.ย. 2569) ----------
+     br_name เขียนสาขา 53 ว่า "สสบม." แต่ cost_center / PO_name เขียน "สสมบ" — ใช้ สสมบ */
+  var BRANCHES = [
+    ['01', 'สสบ', 'ภาค 4'], ['02', 'สสต', 'ภาค 4'], ['03', 'สสญ', 'ภาค 2'], ['04', 'สสน', 'ภาค 5'],
+    ['05', 'สสท', 'ภาค 1'], ['06', 'สสม', 'ภาค 2'], ['07', 'สสส', 'ภาค 1'], ['11', 'สสภ', 'ภาค 4'],
+    ['12', 'สสล', 'ภาค 2'], ['13', 'สสพ', 'ภาค 1'], ['14', 'สสว', 'ภาค 5'], ['15', 'สสช', 'ภาค 3'],
+    ['16', 'สสข', 'ภาค 3'], ['17', 'สสป', 'ภาค 1'], ['53', 'สสมบ', 'ภาค 3'], ['54', 'สสบท', 'ภาค 5'],
+    ['55', 'สสสภ', 'ภาค 3'], ['56', 'สสมส', 'ภาค 5']
+  ];
+  var CC_BRANCH = {
+    '1711202': 'สสส', '1711203': 'สสส', '1712202': 'สสพ', '1712203': 'สสพ', '1713001': 'สสป', '1713202': 'สสป',
+    '1713203': 'สสป', '1715202': 'สสท', '1721202': 'สสม', '1723202': 'สสญ', '1724202': 'สสล', '1724203': 'สสล',
+    '1732202': 'สสช', '1733202': 'สสข', '1733203': 'สสข', '1734202': 'สสมบ', '1734203': 'สสมบ', '1735202': 'สสสภ',
+    '1921202': 'สสบ', '1922202': 'สสต', '1923202': 'สสภ', '1924202': 'สสว', '1931202': 'สสน', '1931203': 'สสน',
+    '1932202': 'สสบท', '1932203': 'สสบท', '1933202': 'สสมส'
+  };
+  var BR_BY_NO = {}, BR_BY_ABBR = {};
+  BRANCHES.forEach(function (b) { var o = { no: b[0], abbr: b[1], region: b[2] }; BR_BY_NO[b[0]] = o; BR_BY_ABBR[b[1]] = o; });
+  BR_BY_ABBR['สสบม'] = BR_BY_ABBR['สสมบ'];
+  function branchByNo(no) { return BR_BY_NO[s(no)] || null; }
+  function branchByAbbr(a) { return BR_BY_ABBR[s(a).replace(/[\s.]/g, '')] || null; }
+  function branchByCC(cc) { var a = CC_BRANCH[normPO(cc)]; return a ? BR_BY_ABBR[a] : null; }
+  function branchLabel(no) { var b = BR_BY_NO[no]; return b ? b.no + ' ' + b.abbr : (no || ''); }
+
   function s(v) { return v === null || v === undefined ? '' : String(v); }
   function trim(v) { return s(v).trim(); }
   function num(v) {
@@ -568,7 +594,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ['qty', 'price', 'amount', 'status', 'contract'].forEach(function (k) {
       if (col[k] === undefined) throw new Error('ไฟล์ LR010 ขาดคอลัมน์ที่จำเป็น: ' + LR_COLS[k][0].s);
     });
-    var recs = [], contracts = {}, matContracts = {}, openMin = null, openMax = null;
+    var recs = [], contracts = {}, matContracts = {}, openMin = null, openMax = null, brCount = {};
     for (var r = h.row + 1; r < aoa.length; r++) {
       var a = aoa[r] || [];
       if (trim(a[col.job]) === '' && trim(a[col.equip]) === '') continue;
@@ -581,6 +607,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         open: toBE(g('open')), end: toBE(g('end')), close: toBE(g('close')), save: toBE(g('save'))
       };
       rec.isMat = rec.type.indexOf('วัสดุ') >= 0;
+      // เลขสาขาอยู่ในเลขที่งาน J69[01]R… (ตรงกับ ซป[01]-…)
+      var jm = /^J\d{2}(\d{2})R/i.exec(rec.job);
+      if (jm) brCount[jm[1]] = (brCount[jm[1]] || 0) + 1;
       recs.push(rec);
       if (rec.contract) {
         contracts[rec.contract] = (contracts[rec.contract] || 0) + 1;
@@ -591,8 +620,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (openMax === null || rec.open > openMax) openMax = rec.open;
       }
     }
+    var brs = Object.keys(brCount).sort(function (a, b) { return brCount[b] - brCount[a]; });
     return { headerRow: h.row + 1, col: col, records: recs, contracts: contracts, matContracts: matContracts,
-      openRange: { from: openMin, to: openMax }, reportRange: readReportRange(aoa, h.row) };
+      openRange: { from: openMin, to: openMax }, reportRange: readReportRange(aoa, h.row),
+      branches: brs, branchCount: brCount, branch: brs.length ? brs[0] : null };
   }
 
   function readReportRange(aoa, hdrRow) {
@@ -634,8 +665,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         src: r + 1, doc: trim(g('doc')), date: toBE(g('date')), mvt: trim(g('mvt')).toUpperCase(),
         item: trim(g('item')), code: normCode(g('code')), codeRaw: trim(g('code')), desc: trim(g('desc')),
         unit: normUnit(g('unit')), qty: num(g('qty')), price: num(g('price')), amount: num(g('amount')),
-        text: trim(g('text')), po: normPO(g('po')), cc: trim(g('cc'))
+        text: trim(g('text')), po: normPO(g('po')), cc: normPO(g('cc'))
       };
+      var bb = branchByCC(rec.cc);
+      rec.br = bb ? bb.no : '';
       rec.counted = rec.mvt === MVT_ISSUE || rec.mvt === MVT_RETURN;
       rec.netQty = -rec.qty;          // เบิก 915 เป็นลบในระบบ → กลับเครื่องหมายให้ "เบิกไปใช้" เป็นบวก
       rec.netAmt = -rec.amount;
@@ -645,12 +678,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (dMax === null || rec.date > dMax) dMax = rec.date;
       }
       recs.push(rec);
-      var p = pos[rec.po] || (pos[rec.po] = { po: rec.po, rows: 0, net: 0, months: {}, other: 0 });
+      var p = pos[rec.po] || (pos[rec.po] = { po: rec.po, rows: 0, net: 0, months: {}, other: 0, brs: {} });
       p.rows++;
+      p.brs[rec.br] = (p.brs[rec.br] || 0) + 1;
       if (rec.counted) p.net += rec.netAmt; else p.other++;
       if (rec.date) p.months[monthOf(rec.date)] = 1;
     }
-    Object.keys(pos).forEach(function (k) { pos[k].net = r2(pos[k].net); });
+    Object.keys(pos).forEach(function (k) {
+      var p = pos[k];
+      p.net = r2(p.net);
+      var ks = Object.keys(p.brs).sort(function (a, b) { return p.brs[b] - p.brs[a]; });
+      p.branch = ks.filter(function (x) { return x; })[0] || '';   // สาขาหลักของ PO (ตาม Cost Center)
+      p.multiBr = ks.length > 1;
+    });
     return { headerRow: h.row + 1, col: col, records: recs, pos: pos, badDate: badDate,
       range: { from: dMin, to: dMax } };
   }
@@ -1050,7 +1090,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     toBE: toBE, monthOf: monthOf, monthLabel: monthLabel, fmtDate: fmtDate, normContract: normContract,
     normPO: normPO, normCode: normCode, parseLR010: parseLR010, parseSAP: parseSAP, parsePOMap: parsePOMap,
     monthsAvailable: monthsAvailable, buildCheck: buildCheck, buildWorkbook: buildWorkbook, fileName: fileName,
-    fmtMoney: fmtMoney, fmtQty: fmtQty, STATUS: STATUS, DATE_FIELDS: DATE_FIELDS
+    fmtMoney: fmtMoney, fmtQty: fmtQty, STATUS: STATUS, DATE_FIELDS: DATE_FIELDS,
+    BRANCHES: BRANCHES, branchByNo: branchByNo, branchByAbbr: branchByAbbr, branchByCC: branchByCC, branchLabel: branchLabel
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   root.MATL = API;
@@ -1064,7 +1105,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     lr: null, sap: null, lrName: '', sapName: '',
     poMap: {}, storeInfo: null,
     sel: null, bindPO: null,
-    dateField: 'end', cisOnly: false, months: {}, res: null, filter: 'all'
+    dateField: 'end', cisOnly: false, months: {}, res: null, filter: 'all', allBr: false
   };
 
   function esc(v) {
@@ -1192,17 +1233,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return Object.keys(pos).map(function (k) { return pos[k]; }).sort(function (a, b) { return b.net - a.net; });
   }
 
+  // PO ที่แสดงในตาราง: เฉพาะสาขาเดียวกับ LR010 (ดูจากเลขที่งาน J69NN) เว้นแต่กด "แสดงทุกสาขา"
+  function visiblePOs() {
+    var all = poList(), lb = state.lr.branch;
+    var sel = {}; (state.sel ? state.sel.pos : []).forEach(function (p) { sel[p] = 1; });
+    state.brEmpty = false;
+    if (!lb || state.allBr) return all;
+    var f = all.filter(function (p) { return p.branch === lb || !p.branch || sel[p.po]; });
+    if (!f.length && all.length) { state.brEmpty = true; return all; }   // ไม่มี PO ของสาขานี้เลย → แสดงทั้งหมด
+    return f;
+  }
+
+  function renderBrMsg(nShow) {
+    var lb = state.lr.branch, all = poList().length, el = $('brMsg');
+    if (!lb) { el.innerHTML = '<span class="tag-dim">อ่านเลขสาขาจากเลขที่งานใน LR010 ไม่ได้ — แสดง PO ทุกสาขา</span>'; return; }
+    var b = L.branchByNo(lb), others = state.lr.branches.slice(1);
+    el.innerHTML = 'LR010 เป็นของสาขา <b>' + esc(L.branchLabel(lb)) + '</b>' + (b ? ' <span class="tag-dim">(' + esc(b.region) + ')</span>' : '') +
+      (others.length ? ' <span class="err">· มีเลขที่งานของสาขาอื่นปนด้วย: ' + esc(others.map(L.branchLabel).join(', ')) + '</span>' : '') +
+      (state.brEmpty ? ' · <span class="err">ไฟล์ SAP ไม่มี PO ของสาขานี้เลย — แสดงทุกสาขา (ตรวจว่าเลือกไฟล์ SAP ถูกสาขา)</span>' :
+      ' · แสดง ' + nShow + ' จาก ' + all + ' PO ') +
+      (!state.brEmpty && (all > nShow || state.allBr) ? '<button id="btnAllBr" class="mini">' + (state.allBr ? 'เฉพาะสาขา ' + esc(L.branchLabel(lb)) : 'แสดงทุกสาขา') + '</button>' : '');
+    var btn = $('btnAllBr');
+    if (btn) btn.onclick = function () { state.allBr = !state.allBr; renderPO(); };
+  }
+
   function renderPO(autoPick) {
     var tb = $('tblPO').querySelector('tbody');
     tb.innerHTML = '';
-    poList().forEach(function (p) {
+    var list = visiblePOs();
+    renderBrMsg(list.length);
+    list.forEach(function (p) {
       var m = state.poMap[p.po];
       var n = m ? lrMatCount(m.contract) : 0;
       var tr = document.createElement('tr');
       tr.dataset.po = p.po;
       tr.innerHTML = '<td>' + esc(p.po || '(ว่าง)') + '</td>' +
         '<td>' + (m ? esc(m.contract) + (m.local ? ' <span class="badge" title="ยังไม่ได้บันทึกขึ้นคลัง">ในเครื่อง</span>' : '') : '<span class="tag-no">ยังไม่ผูก</span>') + '</td>' +
-        '<td>' + esc(m ? m.branch : '') + '</td>' +
+        '<td>' + (p.branch ? esc(L.branchLabel(p.branch)) : '<span class="tag-dim" title="Cost Center ไม่อยู่ในตาราง">' + esc(m && m.branch ? m.branch : '—') + '</span>') +
+          (p.multiBr ? ' <span class="badge" title="PO นี้มีหลาย Cost Center/สาขาในไฟล์ SAP">หลายสาขา</span>' : '') + '</td>' +
         '<td class="num">' + p.rows.toLocaleString() + (p.other ? ' <span class="badge" title="MVT อื่นนอกจาก 915/Z15">+' + p.other + '</span>' : '') + '</td>' +
         '<td class="num">' + money(p.net) + '</td>' +
         '<td>' + (!m ? '<span class="tag-dim">—</span>' : (n ? '<span class="tag-ok">มี ' + n.toLocaleString() + ' แถว</span>' :
@@ -1219,7 +1287,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (autoPick) {
       // ค่าเริ่มต้น: PO ที่ผูกสัญญาแล้วและสัญญานั้นมีวัสดุใน LR010 มากที่สุด
       var best = null, bestN = 0;
-      poList().forEach(function (p) {
+      list.forEach(function (p) {
         var m = state.poMap[p.po]; if (!m) return;
         var n = lrMatCount(m.contract);
         if (n > bestN) { best = p.po; bestN = n; }
@@ -1244,8 +1312,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     state.sel = { contract: lrContractName(m.contract), pos: pos };
     markPO();
     var n = lrMatCount(m.contract);
+    var pb = state.sap.pos[po] && state.sap.pos[po].branch, lb = state.lr.branch;
     $('selInfo').innerHTML = 'สัญญา <b>' + esc(state.sel.contract) + '</b> · PO ' + pos.map(esc).join(', ') +
       (pos.length > 1 ? ' <span class="tag-dim">(รวม ' + pos.length + ' PO ของสัญญานี้)</span>' : '') +
+      (pb && lb && pb !== lb ? ' · <span class="err">PO นี้เป็นของสาขา ' + esc(L.branchLabel(pb)) + ' แต่ LR010 เป็นของสาขา ' + esc(L.branchLabel(lb)) + '</span>' : '') +
       (n ? '' : ' · <span class="err">ไม่พบรายการวัสดุของสัญญานี้ใน LR010 — ตรวจว่าเลือกไฟล์ LR010 ถูกสาขา/ถูกเดือน</span>');
     show('selInfo', true);
     if (prev !== state.sel.contract) state.months = {};
