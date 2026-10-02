@@ -21,7 +21,7 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 .tx{white-space:pre-wrap;background:#f4f6f9;border:1px solid var(--b);border-radius:6px;padding:8px;margin:6px 0 12px;max-height:200px;overflow:auto}dialog{border:1px solid var(--b);border-radius:10px;max-width:640px;width:90%}
 .side{display:flex;flex-wrap:wrap;gap:8px}.fbtn{display:flex;gap:8px;align-items:center}
 .lb{color:var(--m);font-weight:600;align-self:center}
-.sp{display:inline-block;width:14px;height:14px;border:3px solid #cfd8e3;border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}#busy{position:fixed;right:16px;bottom:16px;background:#fff;border:1px solid var(--b);border-radius:20px;padding:6px 14px;box-shadow:0 2px 8px #0002;z-index:9}#busy[hidden]{display:none}#lgb .sp{border-color:#ffffff88;border-top-color:#fff}
+.sp{display:inline-block;width:14px;height:14px;border:3px solid #cfd8e3;border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}#busy{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:99}#busy .bx{background:#fff;border:1px solid var(--b);border-radius:12px;padding:16px 26px;box-shadow:0 4px 18px #0003;font-size:16px}#busy .sp{width:22px;height:22px;margin-right:6px}#busy[hidden]{display:none}#lgb .sp{border-color:#ffffff88;border-top-color:#fff}
 [hidden]{display:none!important}
 </style></head><body>
 <header><h1>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</h1><small id="sub">โหลดไฟล์ Excel เพื่อเริ่มต้น</small></header>
@@ -41,13 +41,13 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 <div class="kpis" id="kpi"></div>
 <div class="card"><h3 style="margin:0 0 8px">งานค้างแต่ละขั้นตอน <small style="color:var(--m);font-weight:400">เขียว = ในกำหนด · แดง = เกินกำหนด · ตัวเลข: ค้างทั้งหมด / เกินกำหนด</small></h3><div class="stg" id="stg"></div></div>
 <div class="card bar">
-<span class="lb">เลือก DMA/หมายเลขงาน ที่ต้องการ</span><select id="fc"><option value="">ทุกสัญญา</option></select><select id="fd"><option value="">ทุก DMA</option></select>
+<span class="lb">เลือก DMA/หมายเลขงาน ที่ต้องการ</span><select id="fd"><option value="">ทุก DMA</option></select>
 
-<input id="q" placeholder="ค้นหาเลขงาน / ถนน"><span class="lb">|</span><label><span class="lb">เลือกเฉพาะ</span> <input type="checkbox" id="fo"> เกินกำหนด</label><span id="cnt" style="color:var(--m)"></span></div>
+<input id="q" placeholder="ค้นหาเลขงาน / ถนน"><span class="lb">|</span><label><span class="lb">เลือกเฉพาะ</span> <input type="checkbox" id="fo"> เกินกำหนด <span id="ovc" style="color:var(--m)"></span></label><span id="cnt" style="color:var(--m)"></span></div>
 <div class="wrap"><div class="card side" id="rb"></div><div class="card side" id="fb"></div><div class="card tw" style="flex:1;min-width:0"><table><thead><tr><th>เลขงาน</th><th>DMA</th><th>ภาคสนามเสร็จ</th><th>เลือกขั้นตอนต่อไป</th><th title="วางเมาส์บนสถานะเพื่อดูวันในขั้นตอนและเกณฑ์">สถานะ</th><th>ระยะเวลางานค้าง</th><th>ครั้งตีกลับ</th><th>ระบุหมายเหตุต่อเนื่อง</th><th>รายละเอียดเพิ่มเติม</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 </div>
 </main>
-<div id="busy" hidden><span class="sp"></span> <span id="bt"></span></div>
+<div id="busy" hidden><div class="bx"><span class="sp"></span> <span id="bt"></span></div></div>
 
 <dialog id="dlg"><h3 id="dh" style="margin-top:0"></h3><b>รายละเอียดการปฏิบัติงาน/ความก้าวหน้าการปฏิบัติงาน</b><div class="tx" id="d1"></div><b>สถานที่ใกล้เคียง/รายละเอียดที่ได้รับแจ้ง</b><div class="tx" id="d2"></div><form method="dialog"><button>ปิด</button></form></dialog>
 <script>
@@ -58,7 +58,7 @@ const SLA={'1':7,'2':4,'3A':4,'3B':2,'4':3};
 // ลำดับขั้นตอนที่แสดงในปุ่มและ dropdown
 const ORD=['1','2','3A','3B','4','5'];
 const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
-const API_URL='https://script.google.com/macros/s/AKfycbzKI2cUYtdNBUBMp7Q3ylGrjajldJ5_8rEet7wQ4sizZLLPqeVupc3XqwzFBMESEUqu/exec';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
+const API_URL='';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
 API=API_URL;if(!API)try{API=localStorage.getItem('api')||''}catch(e){}
 // ขั้นตอนที่แต่ละบทบาทเป็นเจ้าของ (เปลี่ยนต่อได้เฉพาะงานในขั้นตอนเหล่านี้)
 const OWN={'บริษัท':['1','3A','3B'],'กปน':['2','4']};
@@ -109,6 +109,7 @@ $('sla').onchange=e=>{SLA[e.target.dataset.c]=+e.target.value;render()};
 $('f').onchange=async e=>{
  jobs=new Map();heads=[];
  const words=$('pbc').value.split(',').map(s=>s.trim()).filter(Boolean);
+ let first=null; // ถ้ามีหลายสัญญา ใช้เฉพาะสัญญาที่เจอก่อน
  for(const file of e.target.files){
   const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
   const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
@@ -120,6 +121,7 @@ $('f').onchange=async e=>{
   if(!heads.length)heads=hs.filter(h=>!TK.includes(h));
   for(const r of rows){
    if(!words.some(w=>String(r[K.ct]).includes(w)))continue;
+   if(first===null)first=String(r[K.ct]);if(String(r[K.ct])!==first)continue;
    const sys={},trk={};for(const k in r)(TK.includes(k)?trk:sys)[k]=r[k];
    let j=jobs.get(r[K.id]);if(!j){j={sys,trk:{},raw:!isT};jobs.set(r[K.id],j)}
    if(isT){if(!j.raw)j.sys=sys;for(const k in trk)if(trk[k]!=='')j.trk[k]=trk[k]}else{j.sys=sys;j.raw=true}
@@ -131,7 +133,6 @@ $('f').onchange=async e=>{
   const t=new Date(),td=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());$('asof').value=new Date(Math.min(td,mx||td)).toISOString().slice(0,10)}
  $('fd').innerHTML='<option value="">ทุก DMA</option>'+[...new Set([...jobs.values()].map(j=>j.sys[K.dma]))].sort().map(d=>`<option>${esc(d)}</option>`).join('');
  await pull();
- $('fc').innerHTML='<option value="">ทุกสัญญา</option>'+[...new Set([...jobs.values()].map(j=>j.sys[K.ct]))].sort().map(d=>`<option>${esc(d)}</option>`).join('');
  render()};
 // คำนวณทุกงาน: ขั้นตอน, วันในขั้นตอน, เกินกำหนดกี่วัน และกรองตามสิทธิ์ผู้ใช้
 function calc(){const a=asOf();return[...jobs.values()].map(j=>{const c=code(j),s=start(j),f=pd(j.sys[K.fd]);
@@ -151,8 +152,9 @@ function render(){gate();
  const inR=r=>!RF||ROLE[RF].s.includes(r.c);
  $('rb').innerHTML='<span class="lb">เลือก ดูมุมมอง - แก้ไขได้ตามสิทธิ์ (กดซ้ำยกเลิก)</span>'+Object.keys(ROLE).filter(k=>isAd()||(ME&&nr(ME.role)==k)).map(k=>`<button class="rbtn${RF==k?'':' g'}" data-r="${k}">${ROLE[k].l} <b>${open.filter(r=>ROLE[k].s.includes(r.c)).length}</b></button>`).join('');
  $('fb').innerHTML='<span class="lb">กรุณาเลือก ขั้นตอน</span>'+[['','ทุกขั้นตอน (ยังไม่ปิดงาน/เบิกของ)',open.filter(inR).length],...ORD.filter(k=>vs(k)&&(!RF||ROLE[RF].s.includes(k))).map(k=>[k,ST[k],all.filter(r=>r.c==k).length])].map(([k,l,n])=>`<button class="fbtn${SF==k?'':' g'}" data-s="${k}">${l} <b>${n}</b></button>`).join('');
- const L=all.filter(r=>(SF?r.c==SF:r.c!='5')&&inR(r)&&(!$('fc').value||r.j.sys[K.ct]==$('fc').value)&&(!fd||r.j.sys[K.dma]==fd)&&(!$('fo').checked||r.ov)&&(!q||(r.j.sys[K.id]+' '+(r.j.sys['ถนน']||'')).includes(q)))
+ const L0=all.filter(r=>(SF?r.c==SF:r.c!='5')&&inR(r)&&(!fd||r.j.sys[K.dma]==fd)&&(!q||(r.j.sys[K.id]+' '+(r.j.sys['ถนน']||'')).includes(q)))
   .sort((x,y)=>y.ov-x.ov||(y.d??0)-(x.d??0));
+ $('ovc').textContent=`(${L0.filter(r=>r.ov).length}/${L0.length})`;const L=$('fo').checked?L0.filter(r=>r.ov):L0;
  $('cnt').textContent=`แสดง ${Math.min(L.length,500)} จาก ${L.length} งาน`;
  $('rows').innerHTML=L.slice(0,500).map(r=>{const id=esc(r.j.sys[K.id]),tip=r.sl==null?'':`อยู่ในขั้นตอนนี้ ${r.d??'-'} วัน · เกณฑ์ ≤ ${r.sl} วัน`;
   return`<tr><td>${id}</td><td>${esc(r.j.sys[K.dma])}</td><td>${esc(r.j.sys[K.fd]||'-')}</td><td>${r.c=='5'?'ปิดงาน/เบิกของแล้ว':`<select class="ss" data-id="${id}"${can(r.c)?'':' disabled title="บทบาทของคุณเปลี่ยนขั้นตอนนี้ไม่ได้ หรือยังไม่ได้เข้าสู่ระบบ"'}>${[r.c,...NEXT[r.c]].map(k=>`<option value="${k}"${k==r.c?' selected':''}>${ST[k]}</option>`).join('')}</select>`}</td><td title="${tip}">${r.c=='5'?'<span class="badge n">ปิดงาน/เบิกของแล้ว</span>':r.ov?`<span class="badge o">เกิน ${r.ov} วัน</span>`:'<span class="badge n">ในกำหนด</span>'}</td><td>${r.tot??'-'}</td><td>${r.j.trk[TK[3]]||0}</td><td><input class="nt" data-id="${id}" value="${esc(r.j.trk[TK[2]]||'')}"></td><td><button class="g dt" data-id="${id}">ดูข้อมูล</button></td></tr>`}).join('')}
@@ -190,7 +192,7 @@ $('lgb').onclick=async()=>{const b=$('lgb');if(b.disabled)return;if(!API){$('ler
  SD={d:r.data,t:Date.now()};await pull();render()};
 $('sync').onclick=async()=>{await pull(true);render()};
 gate();
-['fc','fd','fo','q','asof'].forEach(i=>$(i).oninput=render);
+['fd','fo','q','asof'].forEach(i=>{$(i).oninput=render;$(i).onchange=render});
 $('today').onclick=()=>{$('asof').value=new Date().toISOString().slice(0,10);render()};
 // ดาวน์โหลดไฟล์ Excel ที่รวมคอลัมน์ติดตาม (เฉพาะงานที่ผู้ใช้มีสิทธิ์เห็น)
 $('exp').onclick=()=>{if(!jobs.size)return;const hs=[...heads,...TK],a=fm(asOf());
