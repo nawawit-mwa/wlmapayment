@@ -1,0 +1,204 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f6f9;--c:#fff;--t:#1d2733;--m:#6b7785;--b:#dde3ea;--ok:#1f9d55;--bad:#d64545;--p:#1769aa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px/1.45 'Noto Sans Thai','Segoe UI',Tahoma,sans-serif}
+header{background:var(--p);color:#fff;padding:14px 20px}h1{margin:0;font-size:18px}header small{opacity:.85}
+main{padding:16px 20px;max-width:1400px;margin:auto}
+.card{background:var(--c);border:1px solid var(--b);border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,select,input,textarea{font:inherit;padding:5px 8px;border:1px solid var(--b);border-radius:6px;background:#fff;color:var(--t)}
+button{cursor:pointer;background:var(--p);color:#fff;border-color:var(--p)}button.g{background:#fff;color:var(--p)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.k{background:var(--c);border:1px solid var(--b);border-radius:8px;padding:10px 14px}.k b{display:block;font-size:26px}.k span{color:var(--m);font-size:12px}
+.stg{display:grid;grid-template-columns:240px 1fr 90px;gap:8px 10px;align-items:center}
+.tr{height:14px;background:#eef1f5;border-radius:7px;overflow:hidden;display:flex}.tr i{display:block;height:100%}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:1000px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-space:nowrap}th{background:#eef1f5}
+.badge{padding:2px 8px;border-radius:10px;font-size:12px;color:#fff}.o{background:var(--bad)}.n{background:var(--ok)}
+.nt{width:240px}
+.tx{white-space:pre-wrap;background:#f4f6f9;border:1px solid var(--b);border-radius:6px;padding:8px;margin:6px 0 12px;max-height:200px;overflow:auto}dialog{border:1px solid var(--b);border-radius:10px;max-width:640px;width:90%}
+.side{display:flex;flex-wrap:wrap;gap:8px}.fbtn{display:flex;gap:8px;align-items:center}
+.lb{color:var(--m);font-weight:600;align-self:center}
+.sp{display:inline-block;width:14px;height:14px;border:3px solid #cfd8e3;border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}#busy{position:fixed;right:16px;bottom:16px;background:#fff;border:1px solid var(--b);border-radius:20px;padding:6px 14px;box-shadow:0 2px 8px #0002;z-index:9}#busy[hidden]{display:none}#lgb .sp{border-color:#ffffff88;border-top-color:#fff}
+[hidden]{display:none!important}
+</style></head><body>
+<header><h1>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</h1><small id="sub">โหลดไฟล์ Excel เพื่อเริ่มต้น</small></header>
+<main>
+<div id="lg" class="card" hidden style="max-width:440px;margin:70px auto;text-align:center"><h3 style="margin-top:0">เข้าสู่ระบบ</h3>
+<div id="ap" hidden style="margin-bottom:12px"><input id="api2" style="width:100%" placeholder="วางลิงก์ Apps Script (…/exec) แล้วกด Enter"><br><small><a href="#" id="off">ใช้งานโดยไม่ต่อ Google Sheet</a></small></div>
+<div class="bar" style="justify-content:center"><input id="lu" placeholder="ชื่อผู้ใช้"><input id="lp" type="password" placeholder="รหัสผ่าน"><button id="lgb">เข้าสู่ระบบ</button></div><p id="lerr" style="color:var(--bad)"></p></div>
+<div class="card bar" id="r1" hidden>
+<button class="g" id="lgo" hidden>ออกจากระบบ</button><b id="me"></b>
+<span class="bar" id="t1" hidden><input type="file" id="f" accept=".xlsx,.xls" multiple title="รับไฟล์จาก FSM และไฟล์ที่ดาวน์โหลดจากหน้านี้"><small id="hint" style="color:var(--m)">กรุณาโหลดไฟล์ข้อมูลล่าสุดก่อนใช้งาน</small></span>
+<span class="bar" id="t2" hidden><label>วันที่อ้างอิง <input type="date" id="asof"></label><button class="g" id="today">วันนี้</button><button id="exp">ดาวน์โหลดไฟล์ที่อัปเดต</button><button class="g" id="sync">รีเฟรชจากชีต</button></span>
+</div>
+<details class="card" id="st" hidden><summary>ตั้งค่า: เกณฑ์วันแต่ละขั้นตอน / คำกรองเลขที่สัญญา (มีผลกับไฟล์ที่โหลดครั้งถัดไป)</summary>
+<div class="bar" id="sla" style="margin:10px 0"></div>
+<label>ลิงก์ Google Apps Script <input id="api" style="width:380px" placeholder="https://script.google.com/macros/s/.../exec"></label><br><label>กรองเฉพาะงานที่เลขที่สัญญามีคำว่า <input id="pbc" value="จบส" style="width:180px"> <small style="color:var(--m)">(ใส่หลายคำคั่นด้วย , ได้)</small></label></details>
+<div id="app" hidden>
+<div class="kpis" id="kpi"></div>
+<div class="card"><h3 style="margin:0 0 8px">งานค้างแต่ละขั้นตอน <small style="color:var(--m);font-weight:400">เขียว = ในกำหนด · แดง = เกินกำหนด · ตัวเลข: ค้างทั้งหมด / เกินกำหนด</small></h3><div class="stg" id="stg"></div></div>
+<div class="card bar">
+<span class="lb">เลือก DMA/หมายเลขงาน ที่ต้องการ</span><select id="fc"><option value="">ทุกสัญญา</option></select><select id="fd"><option value="">ทุก DMA</option></select>
+
+<input id="q" placeholder="ค้นหาเลขงาน / ถนน"><span class="lb">|</span><label><span class="lb">เลือกเฉพาะ</span> <input type="checkbox" id="fo"> เกินกำหนด</label><span id="cnt" style="color:var(--m)"></span></div>
+<div class="wrap"><div class="card side" id="rb"></div><div class="card side" id="fb"></div><div class="card tw" style="flex:1;min-width:0"><table><thead><tr><th>เลขงาน</th><th>DMA</th><th>ภาคสนามเสร็จ</th><th>เลือกขั้นตอนต่อไป</th><th title="วางเมาส์บนสถานะเพื่อดูวันในขั้นตอนและเกณฑ์">สถานะ</th><th>ระยะเวลางานค้าง</th><th>ครั้งตีกลับ</th><th>ระบุหมายเหตุต่อเนื่อง</th><th>รายละเอียดเพิ่มเติม</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+</div>
+</main>
+<div id="busy" hidden><span class="sp"></span> <span id="bt"></span></div>
+
+<dialog id="dlg"><h3 id="dh" style="margin-top:0"></h3><b>รายละเอียดการปฏิบัติงาน/ความก้าวหน้าการปฏิบัติงาน</b><div class="tx" id="d1"></div><b>สถานที่ใกล้เคียง/รายละเอียดที่ได้รับแจ้ง</b><div class="tx" id="d2"></div><form method="dialog"><button>ปิด</button></form></dialog>
+<script>
+// ชื่อขั้นตอน (รหัส → ข้อความที่แสดง) แก้ชื่อได้ที่นี่
+const ST={'1':'บริษัท ตรวจงาน/ลงข้อมูล','2':'ทีม กปน. ตรวจงาน','3A':'บริษัท แก้หน้างาน','3B':'บริษัท แก้ข้อมูล','4':'พร้อมปิดงานแล้ว','5':'ปิดงาน/เบิกของแล้ว'};
+// เกณฑ์จำนวนวัน (วันปฏิทิน) ของแต่ละขั้นตอน ปรับได้ในเมนูตั้งค่า
+const SLA={'1':7,'2':4,'3A':4,'3B':2,'4':3};
+// ลำดับขั้นตอนที่แสดงในปุ่มและ dropdown
+const ORD=['1','2','3A','3B','4','5'];
+const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
+const API_URL='https://script.google.com/macros/s/AKfycbzKI2cUYtdNBUBMp7Q3ylGrjajldJ5_8rEet7wQ4sizZLLPqeVupc3XqwzFBMESEUqu/exec';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
+API=API_URL;if(!API)try{API=localStorage.getItem('api')||''}catch(e){}
+// ขั้นตอนที่แต่ละบทบาทเป็นเจ้าของ (เปลี่ยนต่อได้เฉพาะงานในขั้นตอนเหล่านี้)
+const OWN={'บริษัท':['1','3A','3B'],'กปน':['2','4']};
+const nr=s=>String(s||'').trim().toLowerCase().replace(/[.\s]/g,'');
+// สิทธิ์การมองเห็น: admin (หรือโหมดไม่ต่อชีต) เห็นทุกงาน บทบาทอื่นเห็นเฉพาะงานในขั้นตอนของตนและงานที่ปิดแล้ว
+const isAd=()=>!API||(ME&&nr(ME.role)=='admin');
+const vs=k=>isAd()||k=='5'||(ME&&(OWN[nr(ME.role)]||[]).includes(k));
+const can=c=>!API||(ME&&(nr(ME.role)=='admin'||(OWN[nr(ME.role)]||[]).includes(c)));
+const tabName=c=>String(c).replace(/[\[\]*?:\/\\]/g,'-').slice(0,100);
+// ส่งคำสั่งไป Apps Script (login/load/save) พร้อมแสดงวงกลมหมุนมุมขวาล่าง
+let BC=0,SD=null;const BM={login:'กำลังเข้าสู่ระบบ...',load:'กำลังโหลดข้อมูลจากชีต...',save:'กำลังบันทึก...'};
+const post=async b=>{BC++;$('bt').textContent=BM[b.action]||'';$('busy').hidden=false;
+ try{return await(await fetch(API,{method:'POST',body:JSON.stringify({...b,token:TOKEN})})).json()}catch(e){return{ok:false,error:'เชื่อมต่อไม่ได้'}}finally{if(--BC<=0)$('busy').hidden=true}};
+// ควบคุมการแสดงผล: ยังไม่ login = เห็นแค่ปุ่มเข้าสู่ระบบ, login แล้ว = เห็นช่องโหลดไฟล์, โหลดไฟล์แล้ว = เห็นส่วนที่เหลือ
+function gate(){const ok=!!ME||OFF,d=ok&&jobs.size>0;
+ $('lg').hidden=ok;$('ap').hidden=!!API;$('r1').hidden=!ok;
+ $('t1').hidden=!ok;$('st').hidden=!ok;$('t2').hidden=!d;$('app').hidden=!d;$('hint').hidden=d;
+ $('lgo').hidden=!ME}
+// นำข้อมูลติดตามจากชีตมาใส่ในงานที่โหลดจากไฟล์ (จับคู่ด้วย ชื่อแท็บสัญญา + เลขงาน)
+function applyData(data){const m=new Map();data.forEach(d=>d.rows.forEach(x=>m.set(d.contract+'|'+x[0],x)));
+ jobs.forEach((j,id)=>{const x=m.get(tabName(j.sys[K.ct])+'|'+id);if(!x)return;
+  [TK[0],TK[1],TK[2],TK[3],TK[4]].forEach((k,i)=>j.trk[k]=x[[2,3,4,5,6][i]]);j.at=String(x[8])})}
+// ดึงข้อมูลจากชีต (f=true คือบังคับดึงใหม่ ไม่ใช้ข้อมูลที่ได้มาตอน login)
+async function pull(f){if(!API||!TOKEN)return;let d=!f&&SD&&Date.now()-SD.t<60000?SD.d:null;SD=null;
+ if(!d){const r=await post({action:'load'});if(!r.ok){if(r.error=='auth'){TOKEN='';ME=null;$('me').textContent='';gate()}return}d=r.data}
+ applyData(d)}
+const ROLE={'กปน':{l:'เจ้าหน้าที่ กปน.',s:['2','4']},'บริษัท':{l:'ทีมงาน บริษัท',s:['1','3A','3B']}};
+// เส้นทางเปลี่ยนขั้นตอนที่อนุญาต: ขั้นตอนปัจจุบัน → ขั้นตอนที่เลือกต่อได้
+const NEXT={'1':['2'],'2':['3A','3B','4'],'3A':['2'],'3B':['2'],'4':['3A','3B']};
+// คอลัมน์ที่ระบบเพิ่มในไฟล์ติดตาม (ถูกบันทึกลงชีตด้วย)
+const TK=['ขั้นตอนติดตาม','วันที่เข้าสู่ขั้นตอน','หมายเหตุติดตาม','จำนวนรอบตีกลับ','ประวัติติดตาม'];
+// ชื่อคอลัมน์ในไฟล์ FSM ที่ระบบใช้ (ถ้าระบบจริงเปลี่ยนชื่อคอลัมน์ ให้แก้ตรงนี้)
+const K={id:'หมายเลขงาน',dma:'พื้นที่เฝ้าระวัง',fd:'วันที่งานภาคสนามเสร็จสิ้น',ct:'เลขที่สัญญา'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const pd=s=>{const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s||'').trim());if(!m)return null;let y=+m[3];if(y>2400)y-=543;return new Date(Date.UTC(y,m[2]-1,m[1]))};
+const fm=d=>`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()+543}`;
+const asOf=()=>new Date($('asof').value+'T00:00:00Z');
+let jobs=new Map(),heads=[];
+// หาขั้นตอนปัจจุบันของงาน: สถานะงาน "ปิดงาน" ใน FSM = ปิดงาน/เบิกของแล้ว, ไม่งั้นใช้ขั้นตอนที่ผู้ใช้บันทึก, ถ้าไม่มีให้เริ่มที่ขั้นตอน 1
+const code=j=>{const s=j.sys,st=s['สถานะงาน'];if(st=='ยกเลิกงาน')return'X';const c=st=='ปิดงาน';
+ if(c)return'5';const k=j.trk[TK[0]]&&lk(j.trk[TK[0]]);if(k&&k!='5'&&ORD.includes(k))return k;return'1'};
+// วันที่เริ่มนับเวลาของขั้นตอนปัจจุบัน (ถ้าไม่มีให้ใช้วันที่ภาคสนามเสร็จสิ้น)
+const start=j=>pd(j.trk[TK[1]])||pd(j.sys[K.fd]);
+$('sla').innerHTML=ORD.slice(0,5).map(c=>`<label>${ST[c]} <input type="number" min="0" style="width:60px" data-c="${c}" value="${SLA[c]}"> วัน</label>`).join('');
+$('sla').onchange=e=>{SLA[e.target.dataset.c]=+e.target.value;render()};
+// โหลดไฟล์: เลือกได้หลายไฟล์ (ไฟล์ FSM + ไฟล์ติดตาม) ทุกครั้งที่เลือกจะเริ่มใหม่ทั้งหมด และกรองเฉพาะสัญญาตามคำกรอง
+$('f').onchange=async e=>{
+ jobs=new Map();heads=[];
+ const words=$('pbc').value.split(',').map(s=>s.trim()).filter(Boolean);
+ for(const file of e.target.files){
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+  const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const hi=aoa.findIndex(r=>r.includes(K.id));if(hi<0)continue;
+  const H=aoa[hi],ii=H.indexOf(K.id);
+  const rows=aoa.slice(hi+1).filter(r=>r[ii]!=='').map(r=>Object.fromEntries(H.map((h,i)=>[h,r[i]]).filter(x=>x[0]!=='')));
+  if(!rows.length)continue;
+  const hs=Object.keys(rows[0]),isT=hs.includes(TK[0]);
+  if(!heads.length)heads=hs.filter(h=>!TK.includes(h));
+  for(const r of rows){
+   if(!words.some(w=>String(r[K.ct]).includes(w)))continue;
+   const sys={},trk={};for(const k in r)(TK.includes(k)?trk:sys)[k]=r[k];
+   let j=jobs.get(r[K.id]);if(!j){j={sys,trk:{},raw:!isT};jobs.set(r[K.id],j)}
+   if(isT){if(!j.raw)j.sys=sys;for(const k in trk)if(trk[k]!=='')j.trk[k]=trk[k]}else{j.sys=sys;j.raw=true}
+  }
+ }
+ e.target.value='';
+ if(!jobs.size){$('sub').textContent='ไม่พบงานที่เลขที่สัญญามีคำกรองในไฟล์ที่เลือก';return}
+ if(!$('asof').value){let mx=0;jobs.forEach(j=>{for(const d of[pd(j.sys[K.fd]),pd(j.trk[TK[1]])])if(d&&+d>mx)mx=+d});
+  const t=new Date(),td=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());$('asof').value=new Date(Math.min(td,mx||td)).toISOString().slice(0,10)}
+ $('fd').innerHTML='<option value="">ทุก DMA</option>'+[...new Set([...jobs.values()].map(j=>j.sys[K.dma]))].sort().map(d=>`<option>${esc(d)}</option>`).join('');
+ await pull();
+ $('fc').innerHTML='<option value="">ทุกสัญญา</option>'+[...new Set([...jobs.values()].map(j=>j.sys[K.ct]))].sort().map(d=>`<option>${esc(d)}</option>`).join('');
+ render()};
+// คำนวณทุกงาน: ขั้นตอน, วันในขั้นตอน, เกินกำหนดกี่วัน และกรองตามสิทธิ์ผู้ใช้
+function calc(){const a=asOf();return[...jobs.values()].map(j=>{const c=code(j),s=start(j),f=pd(j.sys[K.fd]);
+ const d=s?Math.floor((a-s)/864e5):null,sl=SLA[c],tot=f?Math.floor((a-f)/864e5):null;
+ return{j,c,d,sl,tot,ov:sl!=null&&d!=null&&d>sl?d-sl:0}}).filter(r=>r.c!='X'&&vs(r.c))}
+// วาดหน้าจอทั้งหมด: การ์ดสรุป, สรุปแต่ละขั้นตอน, ปุ่มกรอง และตาราง
+function render(){gate();
+ if(!jobs.size)return;
+ const all=calc(),open=all.filter(r=>r.c!='5'),ov=open.filter(r=>r.ov);
+ $('sub').textContent=`${all.length} งานในสัญญา PBC ${[...new Set(all.map(r=>r.j.sys[K.ct]))].join(', ')} · วันที่อ้างอิง ${fm(asOf())}`;
+ $('kpi').innerHTML=[['งานที่ตรวจสอบทั้งหมด',all.length],['ยังไม่ปิดงาน/เบิกของ',open.length],['เกินกำหนด (ยังไม่ปิดงาน/เบิกของ)',ov.length,'var(--bad)'],['ปิดงาน/เบิกของแล้ว',all.length-open.length,'var(--ok)'],['เกินเวลากำหนดเฉลี่ย (วัน)',ov.length?(ov.reduce((s,r)=>s+r.ov,0)/ov.length).toFixed(1):0]]
+  .map(([l,v,c])=>`<div class="k"><b style="color:${c||'inherit'}">${v}</b><span>${l}</span></div>`).join('');
+ const mx=Math.max(1,...ORD.slice(0,5).filter(vs).map(c=>open.filter(r=>r.c==c).length));
+ $('stg').innerHTML=ORD.slice(0,5).filter(vs).map(c=>{const o=open.filter(r=>r.c==c),v=o.filter(r=>r.ov).length;
+  return`<div>${ST[c]} <small style="color:var(--m)">(≤${SLA[c]} วัน)</small></div><div class="tr"><i style="width:${(o.length-v)/mx*100}%;background:var(--ok)"></i><i style="width:${v/mx*100}%;background:var(--bad)"></i></div><div>${o.length} <b style="color:var(--bad)">/ ${v}</b></div>`}).join('');
+ const q=$('q').value.trim(),fd=$('fd').value;
+ const inR=r=>!RF||ROLE[RF].s.includes(r.c);
+ $('rb').innerHTML='<span class="lb">เลือก ดูมุมมอง - แก้ไขได้ตามสิทธิ์ (กดซ้ำยกเลิก)</span>'+Object.keys(ROLE).filter(k=>isAd()||(ME&&nr(ME.role)==k)).map(k=>`<button class="rbtn${RF==k?'':' g'}" data-r="${k}">${ROLE[k].l} <b>${open.filter(r=>ROLE[k].s.includes(r.c)).length}</b></button>`).join('');
+ $('fb').innerHTML='<span class="lb">กรุณาเลือก ขั้นตอน</span>'+[['','ทุกขั้นตอน (ยังไม่ปิดงาน/เบิกของ)',open.filter(inR).length],...ORD.filter(k=>vs(k)&&(!RF||ROLE[RF].s.includes(k))).map(k=>[k,ST[k],all.filter(r=>r.c==k).length])].map(([k,l,n])=>`<button class="fbtn${SF==k?'':' g'}" data-s="${k}">${l} <b>${n}</b></button>`).join('');
+ const L=all.filter(r=>(SF?r.c==SF:r.c!='5')&&inR(r)&&(!$('fc').value||r.j.sys[K.ct]==$('fc').value)&&(!fd||r.j.sys[K.dma]==fd)&&(!$('fo').checked||r.ov)&&(!q||(r.j.sys[K.id]+' '+(r.j.sys['ถนน']||'')).includes(q)))
+  .sort((x,y)=>y.ov-x.ov||(y.d??0)-(x.d??0));
+ $('cnt').textContent=`แสดง ${Math.min(L.length,500)} จาก ${L.length} งาน`;
+ $('rows').innerHTML=L.slice(0,500).map(r=>{const id=esc(r.j.sys[K.id]),tip=r.sl==null?'':`อยู่ในขั้นตอนนี้ ${r.d??'-'} วัน · เกณฑ์ ≤ ${r.sl} วัน`;
+  return`<tr><td>${id}</td><td>${esc(r.j.sys[K.dma])}</td><td>${esc(r.j.sys[K.fd]||'-')}</td><td>${r.c=='5'?'ปิดงาน/เบิกของแล้ว':`<select class="ss" data-id="${id}"${can(r.c)?'':' disabled title="บทบาทของคุณเปลี่ยนขั้นตอนนี้ไม่ได้ หรือยังไม่ได้เข้าสู่ระบบ"'}>${[r.c,...NEXT[r.c]].map(k=>`<option value="${k}"${k==r.c?' selected':''}>${ST[k]}</option>`).join('')}</select>`}</td><td title="${tip}">${r.c=='5'?'<span class="badge n">ปิดงาน/เบิกของแล้ว</span>':r.ov?`<span class="badge o">เกิน ${r.ov} วัน</span>`:'<span class="badge n">ในกำหนด</span>'}</td><td>${r.tot??'-'}</td><td>${r.j.trk[TK[3]]||0}</td><td><input class="nt" data-id="${id}" value="${esc(r.j.trk[TK[2]]||'')}"></td><td><button class="g dt" data-id="${id}">ดูข้อมูล</button></td></tr>`}).join('')}
+// เปลี่ยนขั้นตอน/พิมพ์หมายเหตุ: อัปเดตในหน้าก่อน แล้วบันทึกลงชีต ถ้าไม่สำเร็จจะย้อนกลับ
+$('rows').onchange=async e=>{const t=e.target,j=jobs.get(t.dataset.id);if(!j)return;
+ if(API&&!ME){gate();render();return}
+ if(j.busy){alert('กำลังบันทึกงานนี้อยู่ กรุณารอสักครู่');render();return}
+ const snap={...j.trk},old=code(j);
+ if(t.classList.contains('ss')){const n=t.value,d=fm(asOf());
+  j.trk[TK[0]]=ST[n];j.trk[TK[1]]=d;
+  if(n[0]=='3'&&old[0]!='3')j.trk[TK[3]]=(+j.trk[TK[3]]||0)+1;
+  j.trk[TK[4]]=(j.trk[TK[4]]||'')+`${d} ${ME?ME.name:''}: ${ST[old]||old} → ${ST[n]}; `}
+ else j.trk[TK[2]]=t.value;
+ render();if(!API)return;
+ j.busy=true;const n=code(j),r=await post({action:'save',contract:tabName(j.sys[K.ct]),id:t.dataset.id,from:old,code:n,stage:ST[n],date:j.trk[TK[1]]||'',note:j.trk[TK[2]]||'',rounds:j.trk[TK[3]]||0,history:j.trk[TK[4]]||'',base:j.at||''});
+ j.busy=false;if(r.ok)j.at=r.at;else{j.trk=snap;alert(r.conflict?'มีผู้อื่นแก้งานนี้ไปก่อน ระบบโหลดข้อมูลล่าสุดให้แล้ว':r.error=='auth'?'หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่':(r.error||'บันทึกไม่สำเร็จ'));await pull(true);render()}};
+$('rows').onclick=e=>{const b=e.target.closest('.dt');if(!b)return;const j=jobs.get(b.dataset.id);if(!j)return;
+ const x=k=>String(j.sys[k]||'-').replace(/\\n/g,'\n');
+ $('dh').textContent='งาน '+b.dataset.id;$('d1').textContent=x('รายละเอียดการปฏิบัติงาน/ความก้าวหน้าการปฏิบัติงาน');$('d2').textContent=x('สถานที่ใกล้เคียง/รายละเอียดที่ได้รับแจ้ง');$('dlg').showModal()};
+$('fb').onclick=e=>{const b=e.target.closest('.fbtn');if(!b)return;SF=SF==b.dataset.s?'':b.dataset.s;render()};
+$('rb').onclick=e=>{const b=e.target.closest('.rbtn');if(!b)return;RF=RF==b.dataset.r?'':b.dataset.r;SF='';render()};
+$('api').value=$('api2').value=API;
+const setApi=v=>{API=v.trim();try{localStorage.setItem('api',API)}catch(x){}$('api').value=$('api2').value=API;gate()};
+$('api').onchange=e=>setApi(e.target.value);$('api2').onchange=e=>setApi(e.target.value);
+$('off').onclick=e=>{e.preventDefault();OFF=true;gate()};
+$('lgo').onclick=()=>{TOKEN='';ME=null;SD=null;OFF=false;jobs=new Map();$('me').textContent='';gate()};
+$('lp').onkeydown=e=>{if(e.key=='Enter')$('lgb').click()};
+// เข้าสู่ระบบ: ได้ token และข้อมูลติดตามกลับมาพร้อมกัน
+$('lgb').onclick=async()=>{const b=$('lgb');if(b.disabled)return;if(!API){$('lerr').textContent='กรุณาวางลิงก์ Apps Script ก่อน';return}b.disabled=true;b.innerHTML='<span class="sp"></span> กำลังเข้าสู่ระบบ...';$('lerr').textContent='';
+ const r=await post({action:'login',username:$('lu').value.trim(),password:$('lp').value});
+ b.disabled=false;b.textContent='เข้าสู่ระบบ';
+ if(!r.ok){$('lerr').textContent=r.error=='bad login'?'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง':r.error;return}
+ TOKEN=r.token;ME=r.user;RF='';SF='';$('lp').value='';
+ $('me').textContent=`${ME.name} (${nr(ME.role)=='กปน'?'เจ้าหน้าที่ กปน.':nr(ME.role)=='admin'?'ผู้ดูแล':'ทีมงาน บริษัท'})`;
+ SD={d:r.data,t:Date.now()};await pull();render()};
+$('sync').onclick=async()=>{await pull(true);render()};
+gate();
+['fc','fd','fo','q','asof'].forEach(i=>$(i).oninput=render);
+$('today').onclick=()=>{$('asof').value=new Date().toISOString().slice(0,10);render()};
+// ดาวน์โหลดไฟล์ Excel ที่รวมคอลัมน์ติดตาม (เฉพาะงานที่ผู้ใช้มีสิทธิ์เห็น)
+$('exp').onclick=()=>{if(!jobs.size)return;const hs=[...heads,...TK],a=fm(asOf());
+ const out=[...jobs.values()].filter(j=>{const c=code(j);return c=='X'?isAd():vs(c)}).map(j=>{const c=code(j),o={},same=lk(j.trk[TK[0]]||'')==c;
+  hs.forEach(h=>o[h]=h in j.trk?j.trk[h]:(j.sys[h]??''));
+  o[TK[0]]=c=='X'?'':ST[c];
+  o[TK[1]]=c=='X'?'':(same&&j.trk[TK[1]])||(j.trk[TK[0]]?a:(start(j)?fm(start(j)):''));
+  return o});
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(out,{header:hs}),'Tracker');
+ XLSX.writeFile(wb,`FSM_PBC_tracker_${$('asof').value}.xlsx`)};
+</script></body></html>
