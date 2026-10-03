@@ -58,7 +58,7 @@ const SLA={'1':7,'2':4,'3A':4,'3B':2,'4':3};
 // ลำดับขั้นตอนที่แสดงในปุ่มและ dropdown
 const ORD=['1','2','3A','3B','4','5'];
 const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
-const API_URL='';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
+const API_URL='https://script.google.com/macros/s/AKfycbzKI2cUYtdNBUBMp7Q3ylGrjajldJ5_8rEet7wQ4sizZLLPqeVupc3XqwzFBMESEUqu/exec';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
 API=API_URL;if(!API)try{API=localStorage.getItem('api')||''}catch(e){}
 // ขั้นตอนที่แต่ละบทบาทเป็นเจ้าของ (เปลี่ยนต่อได้เฉพาะงานในขั้นตอนเหล่านี้)
 const OWN={'บริษัท':['1','3A','3B'],'กปน':['2','4']};
