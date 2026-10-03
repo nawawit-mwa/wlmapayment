@@ -23,6 +23,13 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 .lb{color:var(--m);font-weight:600;align-self:center}
 .sp{display:inline-block;width:14px;height:14px;border:3px solid #cfd8e3;border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}#busy{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:99}#busy .bx{background:#fff;border:1px solid var(--b);border-radius:12px;padding:16px 26px;box-shadow:0 4px 18px #0003;font-size:16px}#busy .sp{width:22px;height:22px;margin-right:6px}#busy[hidden]{display:none}#lgb .sp{border-color:#ffffff88;border-top-color:#fff}
 [hidden]{display:none!important}
+.process-container{display:flex;align-items:center;gap:14px;overflow-x:auto;padding:8px 4px 14px}
+.step{flex:0 0 205px;width:205px;height:200px;background:#fff;border:1px solid #e1e4e8;border-radius:12px;padding:18px;box-shadow:0 2px 8px #0000000d}
+.step-title{font-size:16px;font-weight:700;line-height:1.4;min-height:46px;margin-bottom:8px}.step-count{font-size:30px;font-weight:700;line-height:1}.step-unit{font-size:13px;color:#777;margin:5px 0 18px}
+.fbar{display:flex;width:100%;height:14px;border-radius:7px;overflow:hidden;background:#e9ecef}.on-time{background:#72a6d8}.overdue{background:#e67e22}
+.percent-row{display:flex;justify-content:space-between;margin-top:9px;font-size:12px}.on-time-text{color:#557fa8}.overdue-text{color:#c66513;font-weight:600}
+.arrow{flex:0 0 auto;font-size:25px;color:#a0a5aa}
+.legend{display:flex;gap:22px;margin-top:8px;font-size:13px;color:#666}.legend-item{display:flex;align-items:center;gap:7px}.legend-box{width:12px;height:12px;border-radius:3px}
 </style></head><body>
 <header><h1>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</h1><small id="sub">โหลดไฟล์ Excel เพื่อเริ่มต้น</small></header>
 <main>
@@ -39,7 +46,8 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 <label>ลิงก์ Google Apps Script <input id="api" style="width:380px" placeholder="https://script.google.com/macros/s/.../exec"></label><br><label>กรองเฉพาะงานที่เลขที่สัญญามีคำว่า <input id="pbc" value="จบส" style="width:180px"> <small style="color:var(--m)">(ใส่หลายคำคั่นด้วย , ได้)</small></label></details>
 <div id="app" hidden>
 <div class="kpis" id="kpi"></div>
-<div class="card"><h3 style="margin:0 0 8px">งานค้างแต่ละขั้นตอน <small style="color:var(--m);font-weight:400">เขียว = ในกำหนด · แดง = เกินกำหนด · ตัวเลข: ค้างทั้งหมด / เกินกำหนด</small></h3><div class="stg" id="stg"></div></div>
+<div class="card"><h3 style="margin:0 0 8px">สถานะงานตามขั้นตอนการทำงาน</h3><div class="process-container" id="stg"></div>
+<div class="legend"><div class="legend-item"><div class="legend-box on-time"></div>งานไม่เกินกำหนด</div><div class="legend-item"><div class="legend-box overdue"></div>งานเกินกำหนด</div></div></div>
 <div class="card bar">
 <span class="lb">เลือก DMA/หมายเลขงาน ที่ต้องการ</span><select id="fd"><option value="">ทุก DMA</option></select>
 
@@ -52,12 +60,12 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 <dialog id="dlg"><h3 id="dh" style="margin-top:0"></h3><b>รายละเอียดการปฏิบัติงาน/ความก้าวหน้าการปฏิบัติงาน</b><div class="tx" id="d1"></div><b>สถานที่ใกล้เคียง/รายละเอียดที่ได้รับแจ้ง</b><div class="tx" id="d2"></div><form method="dialog"><button>ปิด</button></form></dialog>
 <script>
 // ชื่อขั้นตอน (รหัส → ข้อความที่แสดง) แก้ชื่อได้ที่นี่
-const ST={'1':'บริษัท ตรวจงาน/ลงข้อมูล','2':'ทีม กปน. ตรวจงาน','3A':'บริษัท แก้หน้างาน','3B':'บริษัท แก้ข้อมูล','4':'พร้อมปิดงานแล้ว','5':'ปิดงาน/เบิกของแล้ว'};
+const ST={'1':'บริษัท ลงข้อมูลงาน','2':'ทีม กปน. ตรวจงาน','3A':'บริษัท แก้หน้างาน','3B':'บริษัท แก้ข้อมูล','4':'พร้อมปิดงานแล้ว','5':'ปิดงาน/เบิกของแล้ว'};
 // เกณฑ์จำนวนวัน (วันปฏิทิน) ของแต่ละขั้นตอน ปรับได้ในเมนูตั้งค่า
 const SLA={'1':7,'2':4,'3A':4,'3B':2,'4':3};
 // ลำดับขั้นตอนที่แสดงในปุ่มและ dropdown
 const ORD=['1','2','3A','3B','4','5'];
-const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
+const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.startsWith('บริษัท ตรวจงาน')?'1':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
 const API_URL='https://script.google.com/macros/s/AKfycbzKI2cUYtdNBUBMp7Q3ylGrjajldJ5_8rEet7wQ4sizZLLPqeVupc3XqwzFBMESEUqu/exec';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
 API=API_URL;if(!API)try{API=localStorage.getItem('api')||''}catch(e){}
 // ขั้นตอนที่แต่ละบทบาทเป็นเจ้าของ (เปลี่ยนต่อได้เฉพาะงานในขั้นตอนเหล่านี้)
@@ -80,7 +88,7 @@ function gate(){const ok=!!ME||OFF,d=ok&&jobs.size>0;
 // นำข้อมูลติดตามจากชีตมาใส่ในงานที่โหลดจากไฟล์ (จับคู่ด้วย ชื่อแท็บสัญญา + เลขงาน)
 function applyData(data){const m=new Map();data.forEach(d=>d.rows.forEach(x=>m.set(d.contract+'|'+x[0],x)));
  jobs.forEach((j,id)=>{const x=m.get(tabName(j.sys[K.ct])+'|'+id);if(!x)return;
-  [TK[0],TK[1],TK[2],TK[3],TK[4]].forEach((k,i)=>j.trk[k]=x[[2,3,4,5,6][i]]);j.at=String(x[8])})}
+  [TK[0],TK[1],TK[2],TK[3],TK[4]].forEach((k,i)=>j.trk[k]=x[[2,3,4,5,6][i]]);j.trk[TK[0]]=ST[x[1]]||x[2];j.at=String(x[8])})}
 // ดึงข้อมูลจากชีต (f=true คือบังคับดึงใหม่ ไม่ใช้ข้อมูลที่ได้มาตอน login)
 async function pull(f){if(!API||!TOKEN)return;let d=!f&&SD&&Date.now()-SD.t<60000?SD.d:null;SD=null;
  if(!d){const r=await post({action:'load'});if(!r.ok){if(r.error=='auth'){TOKEN='';ME=null;$('me').textContent='';gate()}return}d=r.data}
@@ -89,7 +97,7 @@ const ROLE={'กปน':{l:'เจ้าหน้าที่ กปน.',s:['2'
 // เส้นทางเปลี่ยนขั้นตอนที่อนุญาต: ขั้นตอนปัจจุบัน → ขั้นตอนที่เลือกต่อได้
 const NEXT={'1':['2'],'2':['3A','3B','4'],'3A':['2'],'3B':['2'],'4':['3A','3B']};
 // คอลัมน์ที่ระบบเพิ่มในไฟล์ติดตาม (ถูกบันทึกลงชีตด้วย)
-const TK=['ขั้นตอนติดตาม','วันที่เข้าสู่ขั้นตอน','หมายเหตุติดตาม','จำนวนรอบตีกลับ','ประวัติติดตาม'];
+const TK=['ขั้นตอนที่ปรับปรุง','วันที่เข้าสู่ขั้นตอน','หมายเหตุติดตาม','จำนวนรอบตีกลับ','ประวัติติดตาม'];
 // ชื่อคอลัมน์ในไฟล์ FSM ที่ระบบใช้ (ถ้าระบบจริงเปลี่ยนชื่อคอลัมน์ ให้แก้ตรงนี้)
 const K={id:'หมายเลขงาน',dma:'พื้นที่เฝ้าระวัง',fd:'วันที่งานภาคสนามเสร็จสิ้น',ct:'เลขที่สัญญา'};
 const $=id=>document.getElementById(id);
@@ -109,7 +117,7 @@ $('sla').onchange=e=>{SLA[e.target.dataset.c]=+e.target.value;render()};
 $('f').onchange=async e=>{
  jobs=new Map();heads=[];
  const words=$('pbc').value.split(',').map(s=>s.trim()).filter(Boolean);
- let first=null; // ถ้ามีหลายสัญญา ใช้เฉพาะสัญญาที่เจอก่อน
+ const pend=new Map();let first=null; // ถ้ามีหลายสัญญา ใช้เฉพาะสัญญาที่เจอก่อน
  for(const file of e.target.files){
   const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
   const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
@@ -117,27 +125,27 @@ $('f').onchange=async e=>{
   const H=aoa[hi],ii=H.indexOf(K.id);
   const rows=aoa.slice(hi+1).filter(r=>r[ii]!=='').map(r=>Object.fromEntries(H.map((h,i)=>[h,r[i]]).filter(x=>x[0]!=='')));
   if(!rows.length)continue;
-  const hs=Object.keys(rows[0]),isT=hs.includes(TK[0]);
-  if(!heads.length)heads=hs.filter(h=>!TK.includes(h));
+  const hs=Object.keys(rows[0]),isT=hs.includes(TK[0])||hs.includes('ขั้นตอนติดตาม');
   for(const r of rows){
+   // ไฟล์ที่ดาวน์โหลดจากระบบ: เก็บเฉพาะข้อมูลติดตาม ไปจับคู่กับงานจากไฟล์ FSM ด้วยหมายเลขงาน
+   if(isT){const trk={};for(const k in r)if(TK.includes(k))trk[k]=r[k];if(r['ขั้นตอนติดตาม']!==undefined)trk[TK[0]]=r['ขั้นตอนติดตาม'];pend.set(String(r[K.id]),trk);continue}
    if(!words.some(w=>String(r[K.ct]).includes(w)))continue;
    if(first===null)first=String(r[K.ct]);if(String(r[K.ct])!==first)continue;
-   const sys={},trk={};for(const k in r)(TK.includes(k)?trk:sys)[k]=r[k];
-   let j=jobs.get(r[K.id]);if(!j){j={sys,trk:{},raw:!isT};jobs.set(r[K.id],j)}
-   if(isT){if(!j.raw)j.sys=sys;for(const k in trk)if(trk[k]!=='')j.trk[k]=trk[k]}else{j.sys=sys;j.raw=true}
+   jobs.set(String(r[K.id]),{sys:r,trk:{}});
   }
  }
+ pend.forEach((trk,id)=>{const j=jobs.get(id);if(j)for(const k in trk)if(trk[k]!=='')j.trk[k]=trk[k]});
  e.target.value='';
- if(!jobs.size){$('sub').textContent='ไม่พบงานที่เลขที่สัญญามีคำกรองในไฟล์ที่เลือก';return}
+ if(!jobs.size){$('sub').textContent='ไม่พบงานที่เลขที่สัญญามีคำกรอง (ต้องเลือกไฟล์จาก FSM ด้วย)';return}
  if(!$('asof').value){let mx=0;jobs.forEach(j=>{for(const d of[pd(j.sys[K.fd]),pd(j.trk[TK[1]])])if(d&&+d>mx)mx=+d});
   const t=new Date(),td=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());$('asof').value=new Date(Math.min(td,mx||td)).toISOString().slice(0,10)}
  $('fd').innerHTML='<option value="">ทุก DMA</option>'+[...new Set([...jobs.values()].map(j=>j.sys[K.dma]))].sort().map(d=>`<option>${esc(d)}</option>`).join('');
  await pull();
  render()};
 // คำนวณทุกงาน: ขั้นตอน, วันในขั้นตอน, เกินกำหนดกี่วัน และกรองตามสิทธิ์ผู้ใช้
-function calc(){const a=asOf();return[...jobs.values()].map(j=>{const c=code(j),s=start(j),f=pd(j.sys[K.fd]);
+function calc(all){const a=asOf();return[...jobs.values()].map(j=>{const c=code(j),s=start(j),f=pd(j.sys[K.fd]);
  const d=s?Math.floor((a-s)/864e5):null,sl=SLA[c],tot=f?Math.floor((a-f)/864e5):null;
- return{j,c,d,sl,tot,ov:sl!=null&&d!=null&&d>sl?d-sl:0}}).filter(r=>r.c!='X'&&vs(r.c))}
+ return{j,c,d,sl,tot,ov:sl!=null&&d!=null&&d>sl?d-sl:0}}).filter(r=>r.c!='X'&&(all||vs(r.c)))}
 // วาดหน้าจอทั้งหมด: การ์ดสรุป, สรุปแต่ละขั้นตอน, ปุ่มกรอง และตาราง
 function render(){gate();
  if(!jobs.size)return;
@@ -145,9 +153,9 @@ function render(){gate();
  $('sub').textContent=`${all.length} งานในสัญญา PBC ${[...new Set(all.map(r=>r.j.sys[K.ct]))].join(', ')} · วันที่อ้างอิง ${fm(asOf())}`;
  $('kpi').innerHTML=[['งานที่ตรวจสอบทั้งหมด',all.length],['ยังไม่ปิดงาน/เบิกของ',open.length],['เกินกำหนด (ยังไม่ปิดงาน/เบิกของ)',ov.length,'var(--bad)'],['ปิดงาน/เบิกของแล้ว',all.length-open.length,'var(--ok)'],['เกินเวลากำหนดเฉลี่ย (วัน)',ov.length?(ov.reduce((s,r)=>s+r.ov,0)/ov.length).toFixed(1):0]]
   .map(([l,v,c])=>`<div class="k"><b style="color:${c||'inherit'}">${v}</b><span>${l}</span></div>`).join('');
- const mx=Math.max(1,...ORD.slice(0,5).filter(vs).map(c=>open.filter(r=>r.c==c).length));
- $('stg').innerHTML=ORD.slice(0,5).filter(vs).map(c=>{const o=open.filter(r=>r.c==c),v=o.filter(r=>r.ov).length;
-  return`<div>${ST[c]} <small style="color:var(--m)">(≤${SLA[c]} วัน)</small></div><div class="tr"><i style="width:${(o.length-v)/mx*100}%;background:var(--ok)"></i><i style="width:${v/mx*100}%;background:var(--bad)"></i></div><div>${o.length} <b style="color:var(--bad)">/ ${v}</b></div>`}).join('');
+ // การ์ดขั้นตอนแบบ process flow (แสดงครบทุกขั้นตอนทุกบทบาท ไม่กรองตามสิทธิ์): จำนวนงานยังไม่ปิดงาน/เบิกของ + แถบ 100% (ไม่เกินกำหนด/เกินกำหนด)
+ $('stg').innerHTML=ORD.slice(0,5).map(c=>{const o=calc(true).filter(r=>r.c==c),v=o.filter(r=>r.ov).length,p=o.length?Math.round(v/o.length*100):0;
+  return`<div class="step"><div class="step-title">${ST[c]}<br><small style="font-weight:400;color:var(--m)">(≤${SLA[c]} วัน)</small></div><div class="step-count">${o.length.toLocaleString()}</div><div class="step-unit">งาน (เกินกำหนด ${v})</div><div class="fbar"><div class="on-time" style="width:${o.length?100-p:0}%"></div><div class="overdue" style="width:${p}%"></div></div><div class="percent-row"><div class="on-time-text">ไม่เกิน ${o.length?100-p+'%':'–'}</div><div class="overdue-text">เกิน ${o.length?p+'%':'–'}</div></div></div>`}).join('<div class="arrow">→</div>');
  const q=$('q').value.trim(),fd=$('fd').value;
  const inR=r=>!RF||ROLE[RF].s.includes(r.c);
  $('rb').innerHTML='<span class="lb">เลือก ดูมุมมอง - แก้ไขได้ตามสิทธิ์ (กดซ้ำยกเลิก)</span>'+Object.keys(ROLE).filter(k=>isAd()||(ME&&nr(ME.role)==k)).map(k=>`<button class="rbtn${RF==k?'':' g'}" data-r="${k}">${ROLE[k].l} <b>${open.filter(r=>ROLE[k].s.includes(r.c)).length}</b></button>`).join('');
@@ -195,12 +203,12 @@ gate();
 ['fd','fo','q','asof'].forEach(i=>{$(i).oninput=render;$(i).onchange=render});
 $('today').onclick=()=>{$('asof').value=new Date().toISOString().slice(0,10);render()};
 // ดาวน์โหลดไฟล์ Excel ที่รวมคอลัมน์ติดตาม (เฉพาะงานที่ผู้ใช้มีสิทธิ์เห็น)
-$('exp').onclick=()=>{if(!jobs.size)return;const hs=[...heads,...TK],a=fm(asOf());
- const out=[...jobs.values()].filter(j=>{const c=code(j);return c=='X'?isAd():vs(c)}).map(j=>{const c=code(j),o={},same=lk(j.trk[TK[0]]||'')==c;
-  hs.forEach(h=>o[h]=h in j.trk?j.trk[h]:(j.sys[h]??''));
-  o[TK[0]]=c=='X'?'':ST[c];
-  o[TK[1]]=c=='X'?'':(same&&j.trk[TK[1]])||(j.trk[TK[0]]?a:(start(j)?fm(start(j)):''));
-  return o});
+$('exp').onclick=()=>{if(!jobs.size)return;const a=fm(asOf());
+ const hs=['หมายเลขงาน','วันที่เปิดงาน','ประเภทท่อ','รับแจ้งจาก','สถานะงานในไฟล์','สถานะการส่งใบเบิก',...TK];
+ const out=[...jobs.values()].filter(j=>{const c=code(j);return c!='X'&&vs(c)}).map(j=>{const c=code(j),s=j.sys,same=lk(j.trk[TK[0]]||'')==c;
+  return{'หมายเลขงาน':s[K.id],'วันที่เปิดงาน':s['วันที่เปิดงาน']??'','ประเภทท่อ':s['ประเภทท่อ']??'','รับแจ้งจาก':s['รับแจ้งจาก']??'','สถานะงานในไฟล์':s['สถานะงาน']??'','สถานะการส่งใบเบิก':s['สถานะการส่งใบเบิก']??'',
+   [TK[0]]:ST[c],[TK[1]]:(same&&j.trk[TK[1]])||(j.trk[TK[0]]?a:(start(j)?fm(start(j)):'')),
+   [TK[2]]:j.trk[TK[2]]??'',[TK[3]]:j.trk[TK[3]]??'',[TK[4]]:j.trk[TK[4]]??''}});
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(out,{header:hs}),'Tracker');
  XLSX.writeFile(wb,`FSM_PBC_tracker_${$('asof').value}.xlsx`)};
 </script></body></html>
