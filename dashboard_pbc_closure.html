@@ -17,7 +17,7 @@ button{cursor:pointer;background:var(--p);color:#fff;border-color:var(--p)}butto
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:1000px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-space:nowrap}th{background:#eef1f5}
 .badge{padding:2px 8px;border-radius:10px;font-size:12px;color:#fff}.o{background:var(--bad)}.n{background:var(--ok)}
-.nt{width:240px}
+.nt{width:240px}.fw{padding:3px 10px;font-size:13px;white-space:nowrap}.fw:disabled{background:#cfd8e3;border-color:#cfd8e3;cursor:not-allowed}
 .tx{white-space:pre-wrap;background:#f4f6f9;border:1px solid var(--b);border-radius:6px;padding:8px;margin:6px 0 12px;max-height:200px;overflow:auto}dialog{border:1px solid var(--b);border-radius:10px;max-width:640px;width:90%}
 .side{display:flex;flex-wrap:wrap;gap:8px}.fbtn{display:flex;gap:8px;align-items:center}
 .lb{color:var(--m);font-weight:600;align-self:center}
@@ -52,7 +52,7 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 <span class="lb">เลือก DMA/หมายเลขงาน ที่ต้องการ</span><select id="fd"><option value="">ทุก DMA</option></select>
 
 <input id="q" placeholder="ค้นหาเลขงาน / ถนน"><span class="lb">|</span><label><span class="lb">เลือกเฉพาะ</span> <input type="checkbox" id="fo"> เกินกำหนด <span id="ovc" style="color:var(--m)"></span></label><span id="cnt" style="color:var(--m)"></span></div>
-<div class="wrap"><div class="card side" id="rb"></div><div class="card side" id="fb"></div><div class="card tw" style="flex:1;min-width:0"><table><thead><tr><th>เลขงาน</th><th>DMA</th><th>ภาคสนามเสร็จ</th><th>เลือกขั้นตอนต่อไป</th><th title="วางเมาส์บนสถานะเพื่อดูวันในขั้นตอนและเกณฑ์">สถานะ</th><th>ระยะเวลางานค้าง</th><th>ครั้งตีกลับ</th><th>ระบุหมายเหตุต่อเนื่อง</th><th>รายละเอียดเพิ่มเติม</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="wrap"><div class="card side" id="rb"></div><div class="card side" id="fb"></div><div class="card tw" style="flex:1;min-width:0"><table><thead><tr><th>เลขงาน</th><th>DMA</th><th>ภาคสนามเสร็จ</th><th>ส่งต่อ (กดเดียว)</th><th>เลือกขั้นตอนต่อไป</th><th title="วางเมาส์บนสถานะเพื่อดูวันในขั้นตอนและเกณฑ์">สถานะ</th><th>ระยะเวลางานค้าง</th><th>ครั้งตีกลับ</th><th>ระบุหมายเหตุต่อเนื่อง</th><th>รายละเอียดเพิ่มเติม</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 </div>
 </main>
 <div id="busy" hidden><div class="bx"><span class="sp"></span> <span id="bt"></span></div></div>
@@ -95,6 +95,8 @@ async function pull(f){if(!API||!TOKEN)return;let d=!f&&SD&&Date.now()-SD.t<6000
  applyData(d)}
 const ROLE={'กปน':{l:'เจ้าหน้าที่ กปน.',s:['2','4']},'บริษัท':{l:'ทีมงาน บริษัท',s:['1','3A','3B']}};
 // เส้นทางเปลี่ยนขั้นตอนที่อนุญาต: ขั้นตอนปัจจุบัน → ขั้นตอนที่เลือกต่อได้
+// ปุ่มส่งต่อกดเดียว: ขั้นตอนปัจจุบัน → [ขั้นตอนถัดไปตามปกติ, ข้อความบนปุ่ม] (กรณีส่งกลับแก้ให้ใช้ dropdown)
+const NX={'1':['2','ส่งให้ กปน. ตรวจ'],'2':['4','ตรวจผ่าน พร้อมปิดงาน'],'3A':['2','แก้เสร็จ ส่งตรวจ'],'3B':['2','แก้เสร็จ ส่งตรวจ']};
 const NEXT={'1':['2'],'2':['3A','3B','4'],'3A':['2'],'3B':['2'],'4':['3A','3B']};
 // คอลัมน์ที่ระบบเพิ่มในไฟล์ติดตาม (ถูกบันทึกลงชีตด้วย)
 const TK=['ขั้นตอนที่ปรับปรุง','วันที่เข้าสู่ขั้นตอน','หมายเหตุติดตาม','จำนวนรอบตีกลับ','ประวัติติดตาม'];
@@ -105,6 +107,8 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g
 const pd=s=>{const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s||'').trim());if(!m)return null;let y=+m[3];if(y>2400)y-=543;return new Date(Date.UTC(y,m[2]-1,m[1]))};
 const fm=d=>`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()+543}`;
 const asOf=()=>new Date($('asof').value+'T00:00:00Z');
+// วันที่จริงของเครื่อง (ใช้บันทึกวันที่เข้าขั้นตอนใหม่ ไม่ขึ้นกับวันที่อ้างอิง)
+const today=()=>{const n=new Date();return new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate()))};
 let jobs=new Map(),heads=[];
 // หาขั้นตอนปัจจุบันของงาน: สถานะงาน "ปิดงาน" ใน FSM = ปิดงาน/เบิกของแล้ว, ไม่งั้นใช้ขั้นตอนที่ผู้ใช้บันทึก, ถ้าไม่มีให้เริ่มที่ขั้นตอน 1
 const code=j=>{const s=j.sys,st=s['สถานะงาน'];if(st=='ยกเลิกงาน')return'X';const c=st=='ปิดงาน';
@@ -144,7 +148,7 @@ $('f').onchange=async e=>{
  render()};
 // คำนวณทุกงาน: ขั้นตอน, วันในขั้นตอน, เกินกำหนดกี่วัน และกรองตามสิทธิ์ผู้ใช้
 function calc(all){const a=asOf();return[...jobs.values()].map(j=>{const c=code(j),s=start(j),f=pd(j.sys[K.fd]);
- const d=s?Math.floor((a-s)/864e5):null,sl=SLA[c],tot=f?Math.floor((a-f)/864e5):null;
+ const d=s?Math.max(0,Math.floor((a-s)/864e5)):null,sl=SLA[c],tot=f?Math.floor((a-f)/864e5):null;
  return{j,c,d,sl,tot,ov:sl!=null&&d!=null&&d>sl?d-sl:0}}).filter(r=>r.c!='X'&&(all||vs(r.c)))}
 // วาดหน้าจอทั้งหมด: การ์ดสรุป, สรุปแต่ละขั้นตอน, ปุ่มกรอง และตาราง
 function render(){gate();
@@ -165,13 +169,13 @@ function render(){gate();
  $('ovc').textContent=`(${L0.filter(r=>r.ov).length}/${L0.length})`;const L=$('fo').checked?L0.filter(r=>r.ov):L0;
  $('cnt').textContent=`แสดง ${Math.min(L.length,500)} จาก ${L.length} งาน`;
  $('rows').innerHTML=L.slice(0,500).map(r=>{const id=esc(r.j.sys[K.id]),tip=r.sl==null?'':`อยู่ในขั้นตอนนี้ ${r.d??'-'} วัน · เกณฑ์ ≤ ${r.sl} วัน`;
-  return`<tr><td>${id}</td><td>${esc(r.j.sys[K.dma])}</td><td>${esc(r.j.sys[K.fd]||'-')}</td><td>${r.c=='5'?'ปิดงาน/เบิกของแล้ว':`<select class="ss" data-id="${id}"${can(r.c)?'':' disabled title="บทบาทของคุณเปลี่ยนขั้นตอนนี้ไม่ได้ หรือยังไม่ได้เข้าสู่ระบบ"'}>${[r.c,...NEXT[r.c]].map(k=>`<option value="${k}"${k==r.c?' selected':''}>${ST[k]}</option>`).join('')}</select>`}</td><td title="${tip}">${r.c=='5'?'<span class="badge n">ปิดงาน/เบิกของแล้ว</span>':r.ov?`<span class="badge o">เกิน ${r.ov} วัน</span>`:'<span class="badge n">ในกำหนด</span>'}</td><td>${r.tot??'-'}</td><td>${r.j.trk[TK[3]]||0}</td><td><input class="nt" data-id="${id}" value="${esc(r.j.trk[TK[2]]||'')}"></td><td><button class="g dt" data-id="${id}">ดูข้อมูล</button></td></tr>`}).join('')}
+  return`<tr><td>${id}</td><td>${esc(r.j.sys[K.dma])}</td><td>${esc(r.j.sys[K.fd]||'-')}</td><td>${NX[r.c]?`<button class="fw" data-to="${NX[r.c][0]}"${can(r.c)?'':' disabled title="บทบาทของคุณส่งต่อขั้นตอนนี้ไม่ได้ หรือยังไม่ได้เข้าสู่ระบบ"'}>${NX[r.c][1]}</button>`:'—'}</td><td>${r.c=='5'?'ปิดงาน/เบิกของแล้ว':`<select class="ss" data-id="${id}"${can(r.c)?'':' disabled title="บทบาทของคุณเปลี่ยนขั้นตอนนี้ไม่ได้ หรือยังไม่ได้เข้าสู่ระบบ"'}>${[r.c,...NEXT[r.c]].map(k=>`<option value="${k}"${k==r.c?' selected':''}>${ST[k]}</option>`).join('')}</select>`}</td><td title="${tip}">${r.c=='5'?'<span class="badge n">ปิดงาน/เบิกของแล้ว</span>':r.ov?`<span class="badge o">เกิน ${r.ov} วัน</span>`:'<span class="badge n">ในกำหนด</span>'}</td><td>${r.tot??'-'}</td><td>${r.j.trk[TK[3]]||0}</td><td><input class="nt" data-id="${id}" value="${esc(r.j.trk[TK[2]]||'')}"></td><td><button class="g dt" data-id="${id}">ดูข้อมูล</button></td></tr>`}).join('')}
 // เปลี่ยนขั้นตอน/พิมพ์หมายเหตุ: อัปเดตในหน้าก่อน แล้วบันทึกลงชีต ถ้าไม่สำเร็จจะย้อนกลับ
 $('rows').onchange=async e=>{const t=e.target,j=jobs.get(t.dataset.id);if(!j)return;
  if(API&&!ME){gate();render();return}
  if(j.busy){alert('กำลังบันทึกงานนี้อยู่ กรุณารอสักครู่');render();return}
  const snap={...j.trk},old=code(j);
- if(t.classList.contains('ss')){const n=t.value,d=fm(asOf());
+ if(t.classList.contains('ss')){const n=t.value,d=fm(today());
   j.trk[TK[0]]=ST[n];j.trk[TK[1]]=d;
   if(n[0]=='3'&&old[0]!='3')j.trk[TK[3]]=(+j.trk[TK[3]]||0)+1;
   j.trk[TK[4]]=(j.trk[TK[4]]||'')+`${d} ${ME?ME.name:''}: ${ST[old]||old} → ${ST[n]}; `}
@@ -179,7 +183,8 @@ $('rows').onchange=async e=>{const t=e.target,j=jobs.get(t.dataset.id);if(!j)ret
  render();if(!API)return;
  j.busy=true;const n=code(j),r=await post({action:'save',contract:tabName(j.sys[K.ct]),id:t.dataset.id,from:old,code:n,stage:ST[n],date:j.trk[TK[1]]||'',note:j.trk[TK[2]]||'',rounds:j.trk[TK[3]]||0,history:j.trk[TK[4]]||'',base:j.at||''});
  j.busy=false;if(r.ok)j.at=r.at;else{j.trk=snap;alert(r.conflict?'มีผู้อื่นแก้งานนี้ไปก่อน ระบบโหลดข้อมูลล่าสุดให้แล้ว':r.error=='auth'?'หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่':(r.error||'บันทึกไม่สำเร็จ'));await pull(true);render()}};
-$('rows').onclick=e=>{const b=e.target.closest('.dt');if(!b)return;const j=jobs.get(b.dataset.id);if(!j)return;
+$('rows').onclick=e=>{const f=e.target.closest('.fw');if(f){const s=f.closest('tr').querySelector('.ss');if(s){s.value=f.dataset.to;s.dispatchEvent(new Event('change',{bubbles:true}))}return}
+ const b=e.target.closest('.dt');if(!b)return;const j=jobs.get(b.dataset.id);if(!j)return;
  const x=k=>String(j.sys[k]||'-').replace(/\\n/g,'\n');
  $('dh').textContent='งาน '+b.dataset.id;$('d1').textContent=x('รายละเอียดการปฏิบัติงาน/ความก้าวหน้าการปฏิบัติงาน');$('d2').textContent=x('สถานที่ใกล้เคียง/รายละเอียดที่ได้รับแจ้ง');$('dlg').showModal()};
 $('fb').onclick=e=>{const b=e.target.closest('.fbtn');if(!b)return;SF=SF==b.dataset.s?'':b.dataset.s;render()};
@@ -203,7 +208,7 @@ gate();
 ['fd','fo','q','asof'].forEach(i=>{$(i).oninput=render;$(i).onchange=render});
 $('today').onclick=()=>{$('asof').value=new Date().toISOString().slice(0,10);render()};
 // ดาวน์โหลดไฟล์ Excel ที่รวมคอลัมน์ติดตาม (เฉพาะงานที่ผู้ใช้มีสิทธิ์เห็น)
-$('exp').onclick=()=>{if(!jobs.size)return;const a=fm(asOf());
+$('exp').onclick=()=>{if(!jobs.size)return;const a=fm(today());
  const hs=['หมายเลขงาน','วันที่เปิดงาน','ประเภทท่อ','รับแจ้งจาก','สถานะงานในไฟล์','สถานะการส่งใบเบิก',...TK];
  const out=[...jobs.values()].filter(j=>{const c=code(j);return c!='X'&&vs(c)}).map(j=>{const c=code(j),s=j.sys,same=lk(j.trk[TK[0]]||'')==c;
   return{'หมายเลขงาน':s[K.id],'วันที่เปิดงาน':s['วันที่เปิดงาน']??'','ประเภทท่อ':s['ประเภทท่อ']??'','รับแจ้งจาก':s['รับแจ้งจาก']??'','สถานะงานในไฟล์':s['สถานะงาน']??'','สถานะการส่งใบเบิก':s['สถานะการส่งใบเบิก']??'',
