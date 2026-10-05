@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</title>
+<title>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f4f6f9;--c:#fff;--t:#1d2733;--m:#6b7785;--b:#dde3ea;--ok:#1f9d55;--bad:#d64545;--p:#1769aa}
@@ -31,7 +31,7 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;white-spa
 .arrow{flex:0 0 auto;font-size:25px;color:#a0a5aa}
 .legend{display:flex;gap:22px;margin-top:8px;font-size:13px;color:#666}.legend-item{display:flex;align-items:center;gap:7px}.legend-box{width:12px;height:12px;border-radius:3px}
 </style></head><body>
-<header><h1>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น) — สัญญา PBC</h1><small id="sub">โหลดไฟล์ Excel เพื่อเริ่มต้น</small></header>
+<header><h1>ระบบติดตามการปิดงานงานซ่อมท่อ (หลังภาคสนามเสร็จสิ้น)</h1><small id="sub">โหลดไฟล์ Excel เพื่อเริ่มต้น</small></header>
 <main>
 <div id="lg" class="card" hidden style="max-width:440px;margin:70px auto;text-align:center"><h3 style="margin-top:0">เข้าสู่ระบบ</h3>
 <div id="ap" hidden style="margin-bottom:12px"><input id="api2" style="width:100%" placeholder="วางลิงก์ Apps Script (…/exec) แล้วกด Enter"><br><small><a href="#" id="off">ใช้งานโดยไม่ต่อ Google Sheet</a></small></div>
@@ -65,9 +65,10 @@ const ST={'1':'บริษัท ลงข้อมูลงาน','2':'ที
 const SLA={'1':7,'2':4,'3A':4,'3B':2,'4':3};
 // ลำดับขั้นตอนที่แสดงในปุ่มและ dropdown
 const ORD=['1','2','3A','3B','4','5'];
-const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.startsWith('บริษัท ตรวจงาน')?'1':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',OFF=false;
+const lk=t=>{t=String(t).trim();return ORD.find(k=>ST[k]===t)||(t.startsWith('ทีม กปน. ปิดงาน')?'4':t.startsWith('บริษัท ตรวจงาน')?'1':t.split(' ')[0])};let SF='',RF='',ME=null,TOKEN='',API='',API0='',OFF=false;
 const API_URL='https://script.google.com/macros/s/AKfycbzKI2cUYtdNBUBMp7Q3ylGrjajldJ5_8rEet7wQ4sizZLLPqeVupc3XqwzFBMESEUqu/exec';/* วางลิงก์ Apps Script (…/exec) ระหว่างเครื่องหมาย ' ' */
 API=API_URL;if(!API)try{API=localStorage.getItem('api')||''}catch(e){}
+API0=API;
 // ขั้นตอนที่แต่ละบทบาทเป็นเจ้าของ (เปลี่ยนต่อได้เฉพาะงานในขั้นตอนเหล่านี้)
 const OWN={'บริษัท':['1','3A','3B'],'กปน':['2','4']};
 const nr=s=>String(s||'').trim().toLowerCase().replace(/[.\s]/g,'');
@@ -79,12 +80,19 @@ const tabName=c=>String(c).replace(/[\[\]*?:\/\\]/g,'-').slice(0,100);
 // ส่งคำสั่งไป Apps Script (login/load/save) พร้อมแสดงวงกลมหมุนมุมขวาล่าง
 let BC=0,SD=null;const BM={login:'กำลังเข้าสู่ระบบ...',load:'กำลังโหลดข้อมูลจากชีต...',save:'กำลังบันทึก...'};
 const post=async b=>{BC++;$('bt').textContent=BM[b.action]||'';$('busy').hidden=false;
- try{return await(await fetch(API,{method:'POST',body:JSON.stringify({...b,token:TOKEN})})).json()}catch(e){return{ok:false,error:'เชื่อมต่อไม่ได้'}}finally{if(--BC<=0)$('busy').hidden=true}};
+ const tries=b.action=='save'?1:3;let last=''; // บันทึก (save) ไม่ลองซ้ำ กันบันทึกซ้ำสองครั้ง
+ try{for(let i=1;i<=tries;i++){
+  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
+   const res=await fetch(API,{method:'POST',body:JSON.stringify({...b,token:TOKEN}),signal:ctl.signal,cache:'no-store'});clearTimeout(to);
+   const txt=await res.text();try{return JSON.parse(txt)}catch(x){last='ตอบกลับไม่ใช่ข้อมูล (HTTP '+res.status+') ตรวจการ Deploy และสิทธิ์ Anyone'}
+  }catch(e){last=e.name=='AbortError'?'หมดเวลา 30 วินาที':'เชื่อมต่อ Google ไม่ได้ ('+e.message+')'}
+  if(i<tries){$('bt').textContent=`เชื่อมต่อไม่สำเร็จ กำลังลองอีกครั้ง (${i+1}/${tries})...`;await new Promise(r=>setTimeout(r,1500*i))}}
+  return{ok:false,error:last,net:true}}finally{if(--BC<=0)$('busy').hidden=true}};
 // ควบคุมการแสดงผล: ยังไม่ login = เห็นแค่ปุ่มเข้าสู่ระบบ, login แล้ว = เห็นช่องโหลดไฟล์, โหลดไฟล์แล้ว = เห็นส่วนที่เหลือ
 function gate(){const ok=!!ME||OFF,d=ok&&jobs.size>0;
  $('lg').hidden=ok;$('ap').hidden=!!API;$('r1').hidden=!ok;
  $('t1').hidden=!ok;$('st').hidden=!ok;$('t2').hidden=!d;$('app').hidden=!d;$('hint').hidden=d;
- $('lgo').hidden=!ME}
+ $('lgo').hidden=!(ME||OFF)}
 // นำข้อมูลติดตามจากชีตมาใส่ในงานที่โหลดจากไฟล์ (จับคู่ด้วย ชื่อแท็บสัญญา + เลขงาน)
 function applyData(data){const m=new Map();data.forEach(d=>d.rows.forEach(x=>m.set(d.contract+'|'+x[0],x)));
  jobs.forEach((j,id)=>{const x=m.get(tabName(j.sys[K.ct])+'|'+id);if(!x)return;
@@ -190,21 +198,23 @@ $('rows').onclick=e=>{const f=e.target.closest('.fw');if(f){const s=f.closest('t
 $('fb').onclick=e=>{const b=e.target.closest('.fbtn');if(!b)return;SF=SF==b.dataset.s?'':b.dataset.s;render()};
 $('rb').onclick=e=>{const b=e.target.closest('.rbtn');if(!b)return;RF=RF==b.dataset.r?'':b.dataset.r;SF='';render()};
 $('api').value=$('api2').value=API;
-const setApi=v=>{API=v.trim();try{localStorage.setItem('api',API)}catch(x){}$('api').value=$('api2').value=API;gate()};
+const setApi=v=>{API=API0=v.trim();try{localStorage.setItem('api',API)}catch(x){}$('api').value=$('api2').value=API;gate()};
 $('api').onchange=e=>setApi(e.target.value);$('api2').onchange=e=>setApi(e.target.value);
 $('off').onclick=e=>{e.preventDefault();OFF=true;gate()};
-$('lgo').onclick=()=>{TOKEN='';ME=null;SD=null;OFF=false;jobs=new Map();$('me').textContent='';gate()};
+$('lgo').onclick=()=>{API=API0;TOKEN='';ME=null;SD=null;OFF=false;jobs=new Map();$('me').textContent='';gate()};
 $('lp').onkeydown=e=>{if(e.key=='Enter')$('lgb').click()};
 // เข้าสู่ระบบ: ได้ token และข้อมูลติดตามกลับมาพร้อมกัน
 $('lgb').onclick=async()=>{const b=$('lgb');if(b.disabled)return;if(!API){$('lerr').textContent='กรุณาวางลิงก์ Apps Script ก่อน';return}b.disabled=true;b.innerHTML='<span class="sp"></span> กำลังเข้าสู่ระบบ...';$('lerr').textContent='';
  const r=await post({action:'login',username:$('lu').value.trim(),password:$('lp').value});
  b.disabled=false;b.textContent='เข้าสู่ระบบ';
- if(!r.ok){$('lerr').textContent=r.error=='bad login'?'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง':r.error;return}
+ // admin/admin: ถ้าเชื่อมต่อ Google ไม่ได้ ให้ผู้ดูแลเข้าใช้แบบออฟไลน์ได้ (แก้ไขได้ในหน้าแต่ไม่บันทึกลงชีต)
+ if(!r.ok&&r.net&&$('lu').value.trim().toLowerCase()=='admin'&&$('lp').value=='admin'){OFF=true;API='';TOKEN='';ME=null;$('lp').value='';$('lerr').textContent='';$('me').textContent='ผู้ดูแล (ออฟไลน์: เชื่อมต่อชีตไม่ได้ ข้อมูลไม่ถูกบันทึก)';gate();return}
+ if(!r.ok){$('lerr').textContent=r.error=='bad login'?'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง':(r.net?'เชื่อมต่อไม่ได้: '+r.error+' — กดเข้าสู่ระบบอีกครั้ง':r.error);return}
  TOKEN=r.token;ME=r.user;RF='';SF='';$('lp').value='';
  $('me').textContent=`${ME.name} (${nr(ME.role)=='กปน'?'เจ้าหน้าที่ กปน.':nr(ME.role)=='admin'?'ผู้ดูแล':'ทีมงาน บริษัท'})`;
  SD={d:r.data,t:Date.now()};await pull();render()};
 $('sync').onclick=async()=>{await pull(true);render()};
-gate();
+gate();if(API)fetch(API,{cache:'no-store'}).catch(()=>{}); // ปลุก Apps Script ล่วงหน้า ลดความช้าตอน login
 ['fd','fo','q','asof'].forEach(i=>{$(i).oninput=render;$(i).onchange=render});
 $('today').onclick=()=>{$('asof').value=new Date().toISOString().slice(0,10);render()};
 // ดาวน์โหลดไฟล์ Excel ที่รวมคอลัมน์ติดตาม (เฉพาะงานที่ผู้ใช้มีสิทธิ์เห็น)
